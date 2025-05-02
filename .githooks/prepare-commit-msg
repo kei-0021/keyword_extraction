@@ -1,0 +1,19 @@
+#!/bin/zsh
+
+# デバッグ用のメッセージをスクリプトの最初に追加
+echo "Prepare-commit-msg hook is running..." >&2
+
+# 現在のブランチ名を取得
+branch_name=$(git branch --show-current)
+
+# コミットメッセージに issue #(ブランチ名の数字) を追加
+if [[ -w "$1" ]]; then
+    issue_number=$(echo "$branch_name" | grep -o '[0-9]\+')
+    if [[ -n "$issue_number" ]]; then
+        sed -i '' "1s/^/issue #$issue_number /" "$1" # Remove newline after issue number
+        echo "Issue number prepended to commit message file." >&2
+    fi
+else
+    echo "Error: Cannot write to commit message file: $1" >&2
+    exit 1
+fi

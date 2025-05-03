@@ -4,14 +4,18 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "14"
-    }
+    },
+    "ghcr.io/devcontainers/features/python:1": {}  // Pythonのインストールを追加
   },
-  "postCreateCommand": "npm install htmlhint --global",
+  "postCreateCommand": "pip install -r .devcontainer/requirements.txt",
   "customizations": {
     "vscode": {
       "extensions": [
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "gitgraph.vscode-git-graph",
+        "ms-python.python",  // VSCodeでPythonの拡張を有効にする
+        "ms-azuretools.vscode-docker"  // Docker拡張機能を追加
       ]
     }
   },

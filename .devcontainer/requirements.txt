@@ -1,2 +1,5 @@
+dotenv
+gspread
 janome
 notion-client
+oauth2client

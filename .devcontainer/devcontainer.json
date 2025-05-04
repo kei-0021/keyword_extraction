@@ -1,26 +1,22 @@
 {
-  "name": "Keyword Extraction Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "14"
-    },
-    "ghcr.io/devcontainers/features/python:1": {}  // Pythonのインストールを追加
+  "name": "Python Development with Fugashi",
+  "build": {
+    "dockerfile": "Dockerfile"
   },
-  "postCreateCommand": "pip install -r .devcontainer/requirements.txt",
   "customizations": {
     "vscode": {
+      "settings": {
+        "python.pythonPath": "/usr/local/bin/python"
+      },
       "extensions": [
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "gitgraph.vscode-git-graph",
-        "ms-python.python",  // VSCodeでPythonの拡張を有効にする
-        "ms-azuretools.vscode-docker"  // Docker拡張機能を追加
+        "ms-python.python",
+        "ms-vscode-remote.remote-containers"
       ]
     }
   },
   "mounts": [
-    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    "type=bind,source=/Users/keitahagiwara/Desktop/keyword_extraction/custom_dict,target=/custom_dict"
   ],
-  "workspaceFolder": "/workspace"
+  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && sudo ln -s /path/to/mecabrc /usr/local/etc/mecabrc && pip install mecab-python3",
+  "remoteUser": "vscode"
 }

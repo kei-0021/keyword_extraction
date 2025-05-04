@@ -1,19 +1,32 @@
-from janome.tokenizer import Tokenizer
+import MeCab
 from collections import Counter
 
-# ストップワードリスト
-STOPWORDS = {
-    "する", "なる", "こと", "もの", "いる", "ある", "それ", "これ", "や", "と", "の", "で", "な", "なっ", "た", "です", "ます", "できる", "的", "よう", "(", ")", "者"
-}
+# 除外リストをファイルから読み込む
+def load_stop_words(file_path: str):
+    with open(file_path, "r", encoding="utf-8") as f:
+        stop_words = set(word.strip() for word in f.readlines())
+    return stop_words
 
-tokenizer = Tokenizer()
+# メインの処理
+def analyse_word(text: str, custom_dict_path: str, stop_words_path: str) -> Counter:
+    # 除外リストの読み込み
+    stop_words = load_stop_words(stop_words_path)
+    
+    # MeCabインスタンスを作成
+    tagger = MeCab.Tagger(f"-d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}")
+    
+    # 形態素解析を行い、結果を取得
+    node: MeCab.Node = tagger.parseToNode(text)
+    
+    # 名詞のみを抽出
+    noun_list = []
+    while node:
+        if "名詞" in node.feature:
+            if node.surface not in stop_words and node.surface != "":
+                noun_list.append(node.surface)
+        node = node.next
+    
+    # 名詞のみをカウントして返す
+    return Counter(noun_list)
 
-def analyse_word(your_data: str) -> Counter:
-    # トークン化
-    tokens: list = [
-        token.base_form for token in tokenizer.tokenize(your_data)
-        if token.part_of_speech.split(',')[0] in ['名詞'] and token.base_form not in STOPWORDS
-    ]
 
-    # 頻度カウント
-    return Counter(tokens)

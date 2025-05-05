@@ -18,7 +18,7 @@ def connect_to_sheet(creds_path: str, sheet_name: str) -> gspread.Worksheet:
     return spreadsheet.sheet1
 
 
-def write_word_count(worksheet: gspread.Worksheet, word_count: Counter, top_n: int) -> None:
+def write_word_count(worksheet: gspread.Worksheet, word_count: Counter, top_n: int = 5) -> None:
     # ヘッダー + データをまとめる
     rows = [["単語", "出現回数"]] + [[word, count] for word, count in word_count.most_common(top_n)]
 

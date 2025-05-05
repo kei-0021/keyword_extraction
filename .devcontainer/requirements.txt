@@ -1,5 +1,4 @@
 dotenv
-fugashi[unidic-lite]
 gspread
 notion-client
 oauth2client

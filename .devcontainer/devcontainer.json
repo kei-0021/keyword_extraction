@@ -1,5 +1,5 @@
 {
-  "name": "Python Development with Fugashi",
+  "name": "Word Analyser",
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -17,6 +17,6 @@
   "mounts": [
     "type=bind,source=/Users/keitahagiwara/Desktop/keyword_extraction/custom_dict,target=/custom_dict"
   ],
-  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && sudo ln -s /path/to/mecabrc /usr/local/etc/mecabrc && pip install mecab-python3",
+  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && sudo ln -sf /usr/lib/x86_64-linux-gnu/mecab/mecabrc /usr/local/etc/mecabrc && pip install mecab-python3 && echo 'export PS1=\"%F{blue}%n@word-analyser%f:%F{green}%~%f$ \"' >> /home/vscode/.zshrc",
   "remoteUser": "vscode"
 }

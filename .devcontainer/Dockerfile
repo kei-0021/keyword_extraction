@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     sudo \
     zsh \
     mecab \
+    inotify-tools \
     libmecab-dev \
     mecab-ipadic-utf8 \
     mecab-utils \

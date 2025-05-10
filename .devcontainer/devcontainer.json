@@ -1,5 +1,5 @@
 {
-  "name": "Word Analyser",
+  "name": "Keyword Extraction",
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -18,7 +18,6 @@
   "mounts": [
     "type=bind,source=/Users/keitahagiwara/Desktop/keyword_extraction/custom_dict,target=/custom_dict"
   ],
-  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && sudo ln -sf /usr/lib/x86_64-linux-gnu/mecab/mecabrc /usr/local/etc/mecabrc && pip install mecab-python3 && chmod +x .devcontainer/watch_user_csv.sh && .devcontainer/watch_user_csv.sh && echo 'export PS1=\"%F{blue}%n@word-analyser%f:%F{green}%~%f$ \"' >> /home/vscode/.zshrc",
-
+  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && pip install mecab-python3 && chmod +x .devcontainer/watch_user_csv.sh && .devcontainer/watch_user_csv.sh && echo 'PROMPT=\"%F{blue}%n@%m%f:%F{green}%~%f$ \"' >> ~/.zshrc && echo 'DEFAULT_USER=vscode' >> ~/.zshrc",
   "remoteUser": "vscode"
 }

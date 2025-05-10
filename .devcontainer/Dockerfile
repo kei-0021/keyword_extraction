@@ -1,27 +1,29 @@
 FROM python:3.11
 
 # 必要なパッケージをインストール
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     sudo \
     zsh \
     mecab \
-    inotify-tools \
-    libmecab-dev \
     mecab-ipadic-utf8 \
     mecab-utils \
+    libmecab-dev \
+    inotify-tools \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
-# 最初に PATH を設定
+# MeCab設定ファイルのリンクを作成
+RUN ln -sf /usr/lib/x86_64-linux-gnu/mecab/mecabrc /usr/local/etc/mecabrc
+
+# vscodeユーザー作成と zsh をログインシェルに設定
+RUN useradd -ms /bin/zsh vscode \
+ && echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# シェルを明示
+ENV SHELL=/bin/zsh
 ENV PATH="/usr/lib/mecab:${PATH}"
 
-# ここから他のコマンド
-RUN echo "PATH: $PATH" && which mecab-dict-index
-
-# ユーザー vscode を作成し、sudo 権限を付与し、ログインシェルを zsh に変更
-RUN useradd -ms /bin/zsh vscode && \
-    echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
+# 作業ディレクトリとユーザー設定
 WORKDIR /workspace
 USER vscode

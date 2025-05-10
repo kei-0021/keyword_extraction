@@ -18,6 +18,6 @@
   "mounts": [
     "type=bind,source=/Users/keitahagiwara/Desktop/keyword_extraction/custom_dict,target=/custom_dict"
   ],
-  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && pip install mecab-python3 && chmod +x .devcontainer/watch_user_csv.sh && .devcontainer/watch_user_csv.sh && echo 'PROMPT=\"%F{blue}%n@%m%f:%F{green}%~%f$ \"' >> ~/.zshrc && echo 'DEFAULT_USER=vscode' >> ~/.zshrc",
+  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && pip install mecab-python3 && echo 'PROMPT=\"%F{blue}%n@%m%f:%F{green}%~%f$ \"' >> ~/.zshrc && echo 'DEFAULT_USER=vscode' >> ~/.zshrc",
   "remoteUser": "vscode"
 }

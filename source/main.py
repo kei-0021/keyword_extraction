@@ -34,10 +34,12 @@ def main() -> None:
     print(word_count.most_common(TOP_N))
 
     # Google Sheetsに接続（指定したスプレッドシート名を開く）
-    worksheet = connect_to_sheet(creds_path, "Word Analyser")
+    worksheet = connect_to_sheet(creds_path, "Keyword Extraction")
 
     # 頻出単語とその出現回数をスプレッドシートに書き込む
     write_word_count(worksheet, word_count, TOP_N)
+    
+    print("処理が完了しました。")
 
 if __name__ == "__main__":
     main()

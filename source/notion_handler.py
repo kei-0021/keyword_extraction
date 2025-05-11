@@ -8,12 +8,7 @@ def fetch_good_things(token: str, database_id: str, limit: int = 30) -> str:
     # データベースから最新○件を「日付」降順で取得
     response = notion.databases.query(
         database_id=database_id,
-        sorts=[
-            {
-                "property": "日付",
-                "direction": "descending"
-            }
-        ],
+        sorts=[{"property": "日付", "direction": "descending"}],
         page_size=limit,
     )
 
@@ -27,7 +22,9 @@ def fetch_good_things(token: str, database_id: str, limit: int = 30) -> str:
         good3: list = props["良かったこと３"]["rich_text"]
 
         # 空白区切りで1文にまとめてリストに追加
-        combined_text = f"{_extract_text(good1)} {_extract_text(good2)} {_extract_text(good3)}"
+        combined_text = (
+            f"{_extract_text(good1)} {_extract_text(good2)} {_extract_text(good3)}"
+        )
         all_good_things.append(combined_text)
 
     # 全ての良かったことを1つの文字列に結合（単語解析用）

@@ -1,0 +1,4 @@
+{
+  "python.formatting.provider": "black",  // フォーマッターにblackを指定
+  "editor.formatOnSave": true             // 保存時に自動フォーマット
+}

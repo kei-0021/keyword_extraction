@@ -11,13 +11,11 @@
       "extensions": [
         "ms-python.python",
         "ms-vscode-remote.remote-containers",
-        "mhutchie.git-graph"
+        "mhutchie.git-graph",
+        "microsoft.python"
       ]
     }
   },
-  "mounts": [
-    "type=bind,source=/Users/keitahagiwara/Desktop/keyword_extraction/custom_dict,target=/custom_dict"
-  ],
   "postCreateCommand": "pip install -r .devcontainer/requirements.txt && pip install mecab-python3 && echo 'PROMPT=\"%F{blue}%n@%m%f:%F{green}%~%f$ \"' >> ~/.zshrc && echo 'DEFAULT_USER=vscode' >> ~/.zshrc",
   "remoteUser": "vscode"
 }

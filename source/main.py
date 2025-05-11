@@ -28,7 +28,9 @@ def main() -> None:
     all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LINIT)
 
     # 単語の出現頻度を解析
-    word_count: Counter = analyse_word(all_text, "custom_dict/user.dic", "custom_dict/stop_words.txt")
+    word_count: Counter = analyse_word(
+        all_text, "custom_dict/user.dic", "custom_dict/stop_words.txt"
+    )
 
     # 頻出単語を表示（確認用）
     print(word_count.most_common(TOP_N))
@@ -38,8 +40,9 @@ def main() -> None:
 
     # 頻出単語とその出現回数をスプレッドシートに書き込む
     write_word_count(worksheet, word_count, TOP_N)
-    
+
     print("処理が完了しました。")
+
 
 if __name__ == "__main__":
     main()

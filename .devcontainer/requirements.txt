@@ -2,4 +2,4 @@ dotenv
 gspread
 notion-client
 oauth2client
-Mecab
+ruff

@@ -26,8 +26,8 @@ jobs:
           pip install -r .devcontainer/requirements.txt
           pip install flake8
 
-      - name: Run flake8 (Python linter)
-        run: flake8 . --max-line-length=100
+      - name: Run Ruff (Python linter)
+        run: ruff check .
 
       - name: Run shellcheck (Shell linter)
         run: |

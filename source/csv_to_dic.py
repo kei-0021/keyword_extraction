@@ -1,5 +1,5 @@
-import os
 import csv
+import os
 import subprocess
 
 
@@ -12,7 +12,10 @@ def csv_to_dic(input_csv: str, output_csv: str):
         with open(output_csv, "w", encoding="utf-8") as outfile:
             for row in csvreader:
                 word, part_of_speech, reading, pronunciation = row
-                dic_line = f"{word},0,0,0,{part_of_speech},*,{part_of_speech},*,*,*,{reading},{pronunciation},{pronunciation}\n"
+                dic_line = (
+                    f"{word},0,0,0,{part_of_speech},*,{part_of_speech},*,*,*,"
+                    f"{reading},{pronunciation},{pronunciation}\n"
+                )
                 outfile.write(dic_line)
 
 

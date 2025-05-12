@@ -1,11 +1,10 @@
-from collections import Counter
-from dotenv import load_dotenv
 import os
+from collections import Counter
 
+from dotenv import load_dotenv
 from notion_handler import fetch_good_things
-from word_analyser import analyse_word
 from sheets_writer import connect_to_sheet, write_word_count
-
+from word_analyser import analyse_word
 
 TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
 DAY_LINIT = 30  # 過去何日分のデータを取得するか

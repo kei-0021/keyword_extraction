@@ -1,5 +1,6 @@
-import MeCab
 from collections import Counter
+
+import MeCab
 
 
 # 除外リストをファイルから読み込む

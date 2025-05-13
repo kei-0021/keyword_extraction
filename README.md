@@ -43,7 +43,8 @@ python3 source/main.py
 
 ## ユーザー辞書の登録手順
 
-1. `custom_dict/user_entry.csv` に登録したい単語を **1行ずつ** 記入します。  
+1. `custom_dict/user_entry.csv` を作ります。
+2. に登録したい単語を **1行ずつ** 記入します。  
    フォーマットは以下の通りです：
 ```
 単語,品詞,読み,発音
@@ -65,11 +66,28 @@ python3 source/csv_to_dic.py
 
 ## ストップワードの登録手順
  
-1. `custom_dict/stop_words.csv`に登録したい単語を **1行ずつ** 記入します。 
+1. `custom_dict/stop_words.csv`を作ります。
+2. 登録したい単語を **1行ずつ** 記入します。 
 ```
 あれ
 これ
 それ
 ため
+こと
+ところ
+ほう
+よう
+的
+人
+ん
+何
+日
+中 
+1
+2
+3
+ケ月
+(
+)
 ...
 ```

@@ -1,0 +1,5 @@
+dotenv
+gspread
+notion-client
+oauth2client
+ruff

@@ -1,0 +1,13 @@
+{
+  "files.autoSave": "afterDelay", // 入力後に自動保存（デフォルト1秒後）
+  "files.autoSaveDelay": 1000,    // （任意）保存までの待機時間（ミリ秒）
+
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",       // ⌘+S のときだけ fix 実行
+    "source.fixAll.ruff": "explicit"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  }
+}

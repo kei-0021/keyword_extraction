@@ -10,7 +10,7 @@ branch_name=$(git branch --show-current)
 if [[ -w "$1" ]]; then
     issue_number=$(echo "$branch_name" | grep -o '[0-9]\+')
     if [[ -n "$issue_number" ]]; then
-        sed -i '' "1s/^/issue #$issue_number /" "$1" # Remove newline after issue number
+        sed -i '' -e "1s/^/issue #$issue_number /" "$1"
         echo "Issue number prepended to commit message file." >&2
     fi
 else

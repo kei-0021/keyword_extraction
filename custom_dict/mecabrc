@@ -1,0 +1,2 @@
+# unk.dic を無視する設定
+unk-dic = /dev/null

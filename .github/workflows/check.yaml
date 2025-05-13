@@ -1,19 +1,35 @@
-name: check
+name: Code Quality Check
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
-  check:
-    runs-on: self-hosted
+  lint:
+    name: Run linters
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '14' # または適切なNode.jsのバージョン
-      - name: Install dependencies
-        run: npm install htmlhint --global
-      - name: Run HTMLHint
-        run: htmlhint **/*.html
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r .devcontainer/requirements.txt
+          pip install flake8
+
+      - name: Run Ruff (Python linter)
+        run: ruff check .
+
+      - name: Run shellcheck (Shell linter)
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          find . -type f -name "*.sh" -exec shellcheck {} +

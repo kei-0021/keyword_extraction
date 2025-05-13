@@ -1,7 +1,29 @@
-# Use the base image from the devcontainer.json
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
+FROM python:3.11
 
-# Install additional dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# 必要なパッケージをインストール
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    sudo \
+    zsh \
+    mecab \
+    mecab-ipadic-utf8 \
+    mecab-utils \
+    libmecab-dev \
+    inotify-tools \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
+
+# MeCab設定ファイルのリンクを作成
+RUN ln -sf /usr/lib/x86_64-linux-gnu/mecab/mecabrc /usr/local/etc/mecabrc
+
+# vscodeユーザー作成と zsh をログインシェルに設定
+RUN useradd -ms /bin/zsh vscode \
+ && echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# シェルを明示
+ENV SHELL=/bin/zsh
+ENV PATH="/usr/lib/mecab:${PATH}"
+
+# 作業ディレクトリとユーザー設定
+WORKDIR /workspace
+USER vscode

@@ -14,7 +14,7 @@ GOOGLE_CREDENTIALS_PATH=config/credentials.json
 3. 必要な項目を埋めます。**※これらの項目は厳重に管理し、公開しないようにしてください**
 - `NOTION_TOKEN`はNotionインテグレーションから持ってくる
 - `DATABASE_ID`はNotionインテグレーションセットアップ後にデータベースメニューから取得。
-- こちらで画像付きで解説しています。
+- [こちらの記事](https://qiita.com/queita02/items/17de9aa12dbb47dcef96)で画像付きで解説しています。
 
 4. `config`フォルダの中に`credenitals.json`を配置します。**※この情報も厳重に管理し、公開しないようにしてください**
 - GCPのサービスアカウントキーを取得する

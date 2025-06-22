@@ -2,11 +2,6 @@ import subprocess
 
 import streamlit as st
 
-st.title("Keyword Extraction")
-
-if "running" not in st.session_state:
-    st.session_state.running = False
-
 
 def run_analysis():
     st.session_state.running = True
@@ -23,5 +18,7 @@ def run_analysis():
         st.code(result.stderr)
 
 
-if st.button("解析開始", disabled=st.session_state.running):
+st.title("Keyword Extraction")
+
+if st.button("解析開始"):
     run_analysis()

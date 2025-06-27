@@ -4,3 +4,4 @@ notion-client
 oauth2client
 ruff
 streamlit
+supabase

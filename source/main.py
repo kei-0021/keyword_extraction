@@ -4,6 +4,7 @@ from collections import Counter
 from dotenv import load_dotenv
 from notion_handler import fetch_good_things
 from sheets_writer import connect_to_sheet, write_word_count
+from supabase import create_client
 from word_analyser import analyse_word
 
 TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
@@ -13,6 +14,10 @@ DAY_LINIT = 30  # 過去何日分のデータを取得するか
 def main() -> None:
     # .envファイルから環境変数を読み込む
     load_dotenv(dotenv_path="config/.env")
+
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
+    supabase = create_client(url, key)
 
     # Notion APIとGoogle Sheets API用のキー情報を取得
     NOTION_TOKEN = os.getenv("NOTION_TOKEN")
@@ -26,10 +31,15 @@ def main() -> None:
     # Notionから「良かったこと1〜3」のテキストを抽出・結合
     all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LINIT)
 
+    # supabaseデータベースからストップワードを取得
+    response = supabase.table("stop_words").select("word").eq("user_id", "me").execute()
+
+    # print(f"データベースから取得:{response=}")
+
+    stop_words_set: set[str] = set(item["word"] for item in response.data)
+
     # 単語の出現頻度を解析
-    word_count: Counter = analyse_word(
-        all_text, "custom_dict/user.dic", "custom_dict/stop_words.txt"
-    )
+    word_count: Counter = analyse_word(all_text, "custom_dict/user.dic", stop_words_set)
 
     # 頻出単語を表示（確認用）
     print(word_count.most_common(TOP_N))

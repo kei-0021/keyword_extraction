@@ -3,18 +3,8 @@ from collections import Counter
 import MeCab
 
 
-# 除外リストをファイルから読み込む
-def load_stop_words(file_path: str):
-    with open(file_path, "r", encoding="utf-8") as f:
-        stop_words = set(word.strip() for word in f.readlines())
-    return stop_words
-
-
 # メインの処理
-def analyse_word(text: str, custom_dict_path: str, stop_words_path: str) -> Counter:
-    # 除外リストの読み込み
-    stop_words = load_stop_words(stop_words_path)
-
+def analyse_word(text: str, custom_dict_path: str, stop_words: set[str]) -> Counter:
     # MeCabインスタンスを作成
     tagger = MeCab.Tagger(
         f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"

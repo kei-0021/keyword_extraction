@@ -6,3 +6,4 @@ streamlit
 mecab-python3
 pandas
 matplotlib
+supabase

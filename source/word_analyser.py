@@ -7,7 +7,8 @@ import MeCab
 def analyse_word(text: str, custom_dict_path: str, stop_words: set[str]) -> Counter:
     # MeCabインスタンスを作成
     tagger = MeCab.Tagger(
-        f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
+        "-r /etc/mecabrc"
+        # f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
     )
 
     # 形態素解析を行い、結果を取得

@@ -1,6 +1,7 @@
 import os
 
 import streamlit as st
+from utils.auth import require_login
 
 STOP_WORDS_FILE = "custom_dict/stop_words.txt"
 
@@ -25,6 +26,7 @@ def delete_stop_word(word):
             f.write(w + "\n")
 
 
+require_login()
 st.title("ストップワード管理")
 
 new_word = st.text_input("ストップワードを追加")

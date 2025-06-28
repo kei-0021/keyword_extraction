@@ -3,5 +3,5 @@ gspread
 notion-client
 oauth2client
 ruff
-streamlit
+streamlit>=1.25
 supabase

@@ -2,7 +2,7 @@ dotenv
 gspread
 notion-client
 oauth2client
-streamlit
+streamlit>=1.25
 mecab-python3
 pandas
 matplotlib

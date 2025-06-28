@@ -1,4 +1,6 @@
+import base64
 import os
+import tempfile
 from collections import Counter
 
 from dotenv import load_dotenv
@@ -12,20 +14,34 @@ DAY_LINIT = 30  # 過去何日分のデータを取得するか
 
 
 def main() -> None:
-    # .envファイルから環境変数を読み込む
-    load_dotenv(dotenv_path="config/.env")
+    if os.getenv("RENDER") == "true":
+        # Render環境（環境変数から取得し、jsonを一時ファイルに保存）
+        NOTION_TOKEN = os.getenv("NOTION_TOKEN")
+        DATABASE_ID = os.getenv("DATABASE_ID")
+
+        b64_creds = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        if not b64_creds:
+            raise ValueError("GOOGLE_CREDENTIALS_JSON が設定されていません")
+
+        decoded = base64.b64decode(b64_creds)
+        with tempfile.NamedTemporaryFile(
+            mode="w+b", delete=False, suffix=".json"
+        ) as tmp:
+            tmp.write(decoded)
+            GOOGLE_CREDENTIALS_JSON = tmp.name  # 👈 tempファイルのパスをセット
+    else:
+        # ローカル開発環境（.envファイルから読み込み）
+        load_dotenv(dotenv_path="config/.env")
+        NOTION_TOKEN = os.getenv("NOTION_TOKEN")
+        DATABASE_ID = os.getenv("DATABASE_ID")
+        GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_PATH")
 
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     supabase = create_client(url, key)
 
-    # Notion APIとGoogle Sheets API用のキー情報を取得
-    NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-    DATABASE_ID = os.getenv("DATABASE_ID")
-    creds_path = os.getenv("GOOGLE_CREDENTIALS_PATH")
-
     # 必須の環境変数が揃っているか確認
-    if not all([NOTION_TOKEN, DATABASE_ID, creds_path]):
+    if not all([NOTION_TOKEN, DATABASE_ID, GOOGLE_CREDENTIALS_JSON]):
         raise ValueError("環境変数が不足しています。.envファイルを確認してください。")
 
     # Notionから「良かったこと1〜3」のテキストを抽出・結合
@@ -45,7 +61,7 @@ def main() -> None:
     print(word_count.most_common(TOP_N))
 
     # Google Sheetsに接続（指定したスプレッドシート名を開く）
-    worksheet = connect_to_sheet(creds_path, "Keyword Extraction")
+    worksheet = connect_to_sheet(GOOGLE_CREDENTIALS_JSON, "Keyword Extraction")
 
     # 頻出単語とその出現回数をスプレッドシートに書き込む
     write_word_count(worksheet, word_count, TOP_N)

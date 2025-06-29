@@ -40,6 +40,7 @@ new_word = st.text_input("ストップワードを追加")
 if st.button("追加する") and new_word:
     add_stop_word(new_word)
     st.success(f"「{new_word}」を追加しました")
+    st.session_state.new_word_input = ""  # ← 入力欄をリセット！
     st.cache_data.clear()
 
 # 現在のストップワード表示
@@ -55,4 +56,4 @@ for entry in stop_words:
         if st.button("削除", key=f"del_{word_id}"):
             delete_stop_word(word_id)
             st.cache_data.clear()
-            st.experimental_rerun()
+            st.rerun()

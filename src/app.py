@@ -1,6 +1,7 @@
 import streamlit as st
-from main import main  # main() を直接呼び出すスタイル
-from utils.auth import require_login, show_login
+
+from src.core.main import main  # main() を直接呼び出すスタイル
+from src.utils.auth import require_login, show_login
 
 
 def run_analysis():

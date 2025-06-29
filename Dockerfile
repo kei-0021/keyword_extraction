@@ -26,4 +26,4 @@ RUN ln -sf /usr/lib/x86_64-linux-gnu/mecab/mecabrc /usr/local/etc/mecabrc
 EXPOSE 8501
 
 # アプリ起動コマンド（例：Streamlit の場合）
-CMD ["streamlit", "run", "source/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["bash", "-c", "PYTHONPATH=/app streamlit run src/app.py --server.port=8501 --server.address=0.0.0.0"]

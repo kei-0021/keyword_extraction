@@ -1,6 +1,7 @@
 import streamlit as st
-from utils.auth import require_login
-from utils.supabase import get_supabase_client
+
+from src.utils.auth import require_login
+from src.utils.supabase import get_supabase_client
 
 # ログインを必須にする
 require_login()

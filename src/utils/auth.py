@@ -1,7 +1,8 @@
 import time
 
 import streamlit as st
-from utils.supabase import get_supabase_client
+
+from src.utils.supabase import get_supabase_client
 
 MAX_SESSION_DURATION = 5 * 60  # 秒単位
 

@@ -23,7 +23,7 @@ GOOGLE_CREDENTIALS_PATH=config/credentials.json
 
 ## 形態素解析の実行手順
 
-1. `source/main.py`の定数を必要であれば調整します。
+1. `src/main.py`の定数を必要であれば調整します。
 ```
 TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
 DAY_LINIT = 30  # 過去何日分のデータを取得するか
@@ -31,7 +31,7 @@ DAY_LINIT = 30  # 過去何日分のデータを取得するか
 
 2. 以下のコマンドを実行します:
 ```
-python3 source/main.py
+python3 src/main.py
 ```
 
 3. このスクリプトは以下の処理を行います:
@@ -54,7 +54,7 @@ python3 source/main.py
 
 2. 以下のコマンドを実行します：
 ```
-python3 source/csv_to_dic.py
+python3 src/csv_to_dic.py
 ```
 
 3. このスクリプトは以下の2つの処理を自動で行います：

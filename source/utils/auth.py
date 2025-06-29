@@ -1,15 +1,26 @@
-import os
 import time
 
 import streamlit as st
-from supabase import create_client
+from utils.supabase import get_supabase_client
 
-MAX_SESSION_DURATION = 30  # 30秒（秒単位）
+MAX_SESSION_DURATION = 5 * 60  # 秒単位
+
+
+def restore_session():
+    if "token" in st.session_state and "user" not in st.session_state:
+        supabase = get_supabase_client()
+        try:
+            supabase.auth.set_session(st.session_state.token)  # ✅ 認証を有効にする
+            user = supabase.auth.get_user().user
+            if user:
+                st.session_state.user = user
+        except Exception:
+            st.warning("セッションの復元に失敗しました。再ログインしてください。")
+            st.session_state.pop("token", None)
 
 
 def require_login():
-    restore_session()  # ←トークン復元ロジック（さきほどのやつ）
-
+    restore_session()
     login_time = st.session_state.get("login_time")
     now = time.time()
     if not st.session_state.get("user") or (
@@ -21,47 +32,26 @@ def require_login():
 
 
 def show_login():
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
+    supabase = get_supabase_client()
 
     st.title("ログイン")
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
-    if st.button("ログイン"):
-        supabase = create_client(url, key)
 
+    if st.button("ログイン"):
         try:
             result = supabase.auth.sign_in_with_password(
                 {"email": email, "password": password}
             )
+
             if result.user:
                 st.session_state.user = result.user
-                st.session_state.token = (
-                    result.session.access_token
-                )  # 🔑 トークンを保存
-                st.success("ログイン成功！")
-                st.session_state.login_time = time.time()  # ⏰ ログイン時間を記録
+                st.session_state.token = result.session.access_token
+                st.session_state.login_time = time.time()
+                supabase.auth.set_session(result.session)  # ✅ 必ずトークンを有効に
+                st.rerun()
             else:
                 st.error("IDとパスワードのペアが不正です。もう一度ご確認ください。")
-            if result.user:
-                st.session_state.user = result.user
-                st.success("ログイン成功！")
-                st.rerun()  # 🔁 ここでログイン後の画面に切り替える！
+
         except Exception:
-            # ここで特定の認証エラーならカスタムメッセージに置き換えるのも良い
             st.error("IDとパスワードのペアが不正です。もう一度ご確認ください。")
-
-
-def restore_session():
-    """保持されたセッション情報を復元するための関数."""
-    if "token" in st.session_state and "user" not in st.session_state:
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
-        supabase = create_client(url, key)
-        try:
-            user = supabase.auth.get_user(st.session_state.token).user
-            if user:
-                st.session_state.user = user
-        except Exception:
-            st.warning("セッションの復元に失敗しました。再ログインしてください。")
-            st.session_state.pop("token", None)

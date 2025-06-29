@@ -3,10 +3,11 @@ import os
 import tempfile
 from collections import Counter
 
+import streamlit as st
 from dotenv import load_dotenv
 from notion_handler import fetch_good_things
 from sheets_writer import connect_to_sheet, write_word_count
-from supabase import create_client
+from utils.supabase import get_supabase_client
 from word_analyser import analyse_word
 
 TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
@@ -36,9 +37,7 @@ def main() -> None:
         DATABASE_ID = os.getenv("DATABASE_ID")
         GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_PATH")
 
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
-    supabase = create_client(url, key)
+    supabase = get_supabase_client()
 
     # 必須の環境変数が揃っているか確認
     if not all([NOTION_TOKEN, DATABASE_ID, GOOGLE_CREDENTIALS_JSON]):
@@ -48,7 +47,10 @@ def main() -> None:
     all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LINIT)
 
     # supabaseデータベースからストップワードを取得
-    response = supabase.table("stop_words").select("word").eq("user_id", "me").execute()
+    user_id = st.session_state.user.id
+    response = (
+        supabase.table("stop_words").select("word").eq("user_id", user_id).execute()
+    )
 
     # print(f"データベースから取得:{response=}")
 

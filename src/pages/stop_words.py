@@ -36,17 +36,30 @@ def delete_stop_word(word_id):
     supabase.table("stop_words").delete().eq("id", word_id).execute()
 
 
-# 入力フォーム
-new_word = st.text_input("ストップワードを追加")
-if st.button("追加する") and new_word:
-    add_stop_word(new_word)
-    st.success(f"「{new_word}」を追加しました")
-    st.session_state.new_word_input = ""  # ← 入力欄をリセット！
-    st.cache_data.clear()
-
-# 現在のストップワード表示
-st.subheader("現在のストップワード")
+# 現在のストップワード一覧を取得
 stop_words = fetch_stop_words()
+existing_words = {entry["word"] for entry in stop_words}  # 重複チェック用セット
+
+# 入力フォーム（key付きで入力内容をセッション管理）
+new_word = st.text_input(
+    "ストップワードを追加",
+    value=st.session_state.get("new_word_input", ""),  # ここでvalue指定
+    key="new_word_input",
+)
+
+if st.button("追加する") and new_word:
+    cleaned_word = new_word.strip()
+    if cleaned_word in existing_words:
+        st.warning(f"「{cleaned_word}」は既に追加されています")
+    else:
+        add_stop_word(cleaned_word)
+        st.success(f"「{cleaned_word}」を追加しました")
+        st.cache_data.clear()
+        st.session_state.new_word_input = ""
+        st.rerun()  # 即時反映のため再読み込み
+
+# ストップワード表示
+st.subheader("現在のストップワード")
 for entry in stop_words:
     word = entry["word"]
     word_id = entry["id"]

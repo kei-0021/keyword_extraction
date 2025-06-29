@@ -7,8 +7,14 @@ def run_analysis():
     try:
         st.session_state.running = True
         with st.spinner("解析を実行中...お待ちください"):
-            main()  # 副作用あるが、Streamlitセッションと連携して安全に実行
+            word_count = main()  # 👈 カウントを受け取る
         st.success("解析完了！")
+
+        # 👇 頻出単語を表示
+        st.subheader("上位キーワード")
+        for word, count in word_count.most_common(5):  # TOP_N と連携しても良い
+            st.markdown(f"- **{word}**: {count} 回")
+
     except Exception as e:
         st.error(f"エラーが発生しました: {e}")
     finally:

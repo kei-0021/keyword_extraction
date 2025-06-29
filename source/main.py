@@ -14,7 +14,7 @@ TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
 DAY_LINIT = 30  # 過去何日分のデータを取得するか
 
 
-def main() -> None:
+def main() -> Counter:
     if os.getenv("RENDER") == "true":
         # Render環境（環境変数から取得し、jsonを一時ファイルに保存）
         NOTION_TOKEN = os.getenv("NOTION_TOKEN")
@@ -52,15 +52,10 @@ def main() -> None:
         supabase.table("stop_words").select("word").eq("user_id", user_id).execute()
     )
 
-    # print(f"データベースから取得:{response=}")
-
     stop_words_set: set[str] = set(item["word"] for item in response.data)
 
     # 単語の出現頻度を解析
     word_count: Counter = analyse_word(all_text, "custom_dict/user.dic", stop_words_set)
-
-    # 頻出単語を表示（確認用）
-    print(word_count.most_common(TOP_N))
 
     # Google Sheetsに接続（指定したスプレッドシート名を開く）
     worksheet = connect_to_sheet(GOOGLE_CREDENTIALS_JSON, "Keyword Extraction")
@@ -68,8 +63,4 @@ def main() -> None:
     # 頻出単語とその出現回数をスプレッドシートに書き込む
     write_word_count(worksheet, word_count, TOP_N)
 
-    print("処理が完了しました。")
-
-
-if __name__ == "__main__":
-    main()
+    return word_count

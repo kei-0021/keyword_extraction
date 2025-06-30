@@ -5,3 +5,4 @@ oauth2client
 ruff
 streamlit>=1.25
 supabase
+matplotlib

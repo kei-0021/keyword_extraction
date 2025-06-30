@@ -39,7 +39,7 @@ if "word_count" in st.session_state:
     st.subheader("上位キーワード")
 
     # DataFrameに変換してグラフ用データに
-    df = pd.DataFrame(word_count.most_common(10), columns=["word", "count"])
+    df = pd.DataFrame(word_count.most_common(5), columns=["単語", "出現回数"])
 
     # 表示
     for word, count in df.values:
@@ -49,12 +49,12 @@ if "word_count" in st.session_state:
     st.subheader("出現頻度グラフ")
     chart = (
         alt.Chart(df)
-        .mark_bar()
+        .mark_bar(color="#3CB371")  # ミディアムシーグリーン
         .encode(
-            x=alt.X("word:N", sort="-y", title="単語"),
-            y=alt.Y("count:Q", title="出現回数"),
-            tooltip=["word", "count"],
+            x=alt.X("単語:N", sort="-y", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("出現回数:Q"),
         )
-        .properties(width=600, height=400)
+        .properties(width=500, height=300, title="上位キーワード")
     )
+
     st.altair_chart(chart, use_container_width=True)

@@ -1,3 +1,5 @@
+import altair as alt
+import pandas as pd
 import streamlit as st
 
 from src.core.main import main as run_keyword_extraction
@@ -31,8 +33,28 @@ if st.button("解析開始", disabled=is_running):
     finally:
         st.session_state.running = False
 
-# 解析結果の表示
+# 解析結果の表示（テキスト＋グラフ）
 if "word_count" in st.session_state:
+    word_count = st.session_state["word_count"]
     st.subheader("上位キーワード")
-    for word, count in st.session_state["word_count"].most_common(5):
+
+    # DataFrameに変換してグラフ用データに
+    df = pd.DataFrame(word_count.most_common(10), columns=["word", "count"])
+
+    # 表示
+    for word, count in df.values:
         st.markdown(f"- **{word}**: {count} 回")
+
+    # グラフ表示
+    st.subheader("出現頻度グラフ")
+    chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X("word:N", sort="-y", title="単語"),
+            y=alt.Y("count:Q", title="出現回数"),
+            tooltip=["word", "count"],
+        )
+        .properties(width=600, height=400)
+    )
+    st.altair_chart(chart, use_container_width=True)

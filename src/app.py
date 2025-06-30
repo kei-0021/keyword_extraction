@@ -1,8 +1,9 @@
-import altair as alt
-import pandas as pd
+import io
+
 import streamlit as st
 
 from src.core.main import main as run_keyword_extraction
+from src.core.plot import generate_bar_chart
 from src.utils.auth import require_login, show_login
 
 # --- アプリ起動時のルート処理 ---
@@ -33,28 +34,22 @@ if st.button("解析開始", disabled=is_running):
     finally:
         st.session_state.running = False
 
-# 解析結果の表示（テキスト＋グラフ）
+# 解析結果の表示（グラフ）
 if "word_count" in st.session_state:
-    word_count = st.session_state["word_count"]
-    st.subheader("上位キーワード")
+    fig = generate_bar_chart(st.session_state["word_count"])
 
-    # DataFrameに変換してグラフ用データに
-    df = pd.DataFrame(word_count.most_common(5), columns=["単語", "出現回数"])
+    st.plotly_chart(fig, use_container_width=True)
 
-    # 表示
-    for word, count in df.values:
-        st.markdown(f"- **{word}**: {count} 回")
+    # PNGデータをバイトストリームで取得
+    img_bytes = fig.to_image(format="png")
 
-    # グラフ表示
-    st.subheader("出現頻度グラフ")
-    chart = (
-        alt.Chart(df)
-        .mark_bar(color="#3CB371")  # ミディアムシーグリーン
-        .encode(
-            x=alt.X("単語:N", sort="-y", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("出現回数:Q"),
-        )
-        .properties(width=500, height=300, title="上位キーワード")
+    # バイトデータをBytesIOに入れる
+    img_io = io.BytesIO(img_bytes)
+
+    # ダウンロードボタン表示
+    st.download_button(
+        label="PNG画像をダウンロード",
+        data=img_io,
+        file_name="keyword_chart.png",
+        mime="image/png",
     )
-
-    st.altair_chart(chart, use_container_width=True)

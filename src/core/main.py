@@ -3,16 +3,17 @@ import os
 import tempfile
 from collections import Counter
 
+import kaleido
 import streamlit as st
 from dotenv import load_dotenv
 
 from src.core.notion_handler import fetch_good_things
-from src.core.sheets_writer import connect_to_sheet, write_word_count
+from src.core.plot import generate_bar_chart
 from src.core.word_analyser import analyse_word
 from src.utils.supabase import get_supabase_client
 
 TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
-DAY_LINIT = 30  # 過去何日分のデータを取得するか
+DAY_LIMIT = 30  # 過去何日分のデータを取得するか
 
 
 def main() -> Counter:
@@ -46,7 +47,7 @@ def main() -> Counter:
         raise ValueError("環境変数が不足しています。.envファイルを確認してください。")
 
     # Notionからデータ取得
-    all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LINIT)
+    all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LIMIT)
 
     if IS_DEV:
         # 開発用フォルダにある stop_words.txt を読む
@@ -64,12 +65,14 @@ def main() -> Counter:
     # 解析処理は共通
     word_count: Counter = analyse_word(all_text, "custom_dict/user.dic", stop_words_set)
 
-    # Google Sheets接続と書き込み
-    worksheet = connect_to_sheet(GOOGLE_CREDENTIALS_JSON, "Keyword Extraction")
-    write_word_count(worksheet, word_count, TOP_N)
-
-    # 開発環境ならログに頻出単語を出力
     if IS_DEV:
+        fig = generate_bar_chart(word_count)
+
+        # PNGファイルに保存
+        kaleido.get_chrome_sync()
+        fig.write_image("output/keyword_chart.png")
+
+        print("グラフの出力が完了しました")
         print(word_count.most_common(TOP_N))
 
     return word_count

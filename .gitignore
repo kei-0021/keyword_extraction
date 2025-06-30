@@ -5,3 +5,4 @@ custom_dict/user_entry.csv
 custom_dict/user.csv
 custom_dict/user.dic
 .DS_Store
+output/

@@ -5,9 +5,6 @@
   },
   "customizations": {
     "vscode": {
-      "settings": {
-        "python.pythonPath": "/usr/local/bin/python"
-      },
       "extensions": [
         "ms-python.python",
         "ms-vscode-remote.remote-containers",

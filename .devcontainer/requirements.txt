@@ -1,8 +1,10 @@
-dotenv
-gspread
-notion-client
-oauth2client
 ruff
-streamlit>=1.25
+dotenv
 supabase
-matplotlib
+oauth2client
+notion-client
+streamlit>=1.25
+gspread
+pandas
+plotly
+kaleido

@@ -4,7 +4,7 @@ import streamlit as st
 
 from src.utils.supabase import get_supabase_client
 
-MAX_SESSION_DURATION = 5 * 60  # 秒単位
+MAX_SESSION_DURATION = 15 * 60  # 秒単位
 
 
 def restore_session():

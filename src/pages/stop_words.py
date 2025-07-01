@@ -33,19 +33,38 @@ def add_stop_word(word):
 
 # 削除
 def delete_stop_word(word_id):
-    supabase.table("stop_words").delete().eq("id", word_id).execute()
+    print("現在のユーザーID:", st.session_state.user.id)
+
+    print(f"削除リクエスト: id={word_id} / type={type(word_id)}")
+
+    response = (
+        supabase.table("stop_words")
+        .delete()
+        .eq("id", word_id)
+        .eq("user_id", st.session_state.user.id)
+        .execute()
+    )
+
+    print("削除レスポンス:", response)
+    print("削除レスポンス data:", response.data)
 
 
 # 現在のストップワード一覧を取得
 stop_words = fetch_stop_words()
 existing_words = {entry["word"] for entry in stop_words}  # 重複チェック用セット
 
-# 入力フォーム（key付きで入力内容をセッション管理）
+
+if "input_key_version" not in st.session_state:
+    st.session_state.input_key_version = 0
+
+input_key = f"new_word_input_{st.session_state.input_key_version}"
+
 new_word = st.text_input(
     "ストップワードを追加",
-    value=st.session_state.get("new_word_input", ""),  # ここでvalue指定
-    key="new_word_input",
+    key=input_key,
+    placeholder="ストップワードを入力してください",
 )
+
 
 if st.button("追加する") and new_word:
     cleaned_word = new_word.strip()
@@ -54,13 +73,16 @@ if st.button("追加する") and new_word:
     else:
         add_stop_word(cleaned_word)
         st.success(f"「{cleaned_word}」を追加しました")
+        # キーを変えてウィジェットを新規生成 → 入力欄リセット効果
+        st.session_state.input_key_version += 1
         st.cache_data.clear()
-        st.session_state.new_word_input = ""
-        st.rerun()  # 即時反映のため再読み込み
+        st.session_state["new_word_input"] = ""
+        st.rerun()
+
 
 # ストップワード表示
-st.subheader("現在のストップワード")
-for entry in stop_words:
+stop_words_sorted = sorted(stop_words, key=lambda x: x["word"])
+for entry in stop_words_sorted:
     word = entry["word"]
     word_id = entry["id"]
 
@@ -68,10 +90,7 @@ for entry in stop_words:
     with col1:
         st.write(word)
     with col2:
-        # 削除ボタンをフォームでラップ（keyで一意化）
-        with st.form(key=f"form_del_{word_id}", clear_on_submit=True):
-            submitted = st.form_submit_button("削除")
-            if submitted:
-                delete_stop_word(word_id)
-                st.cache_data.clear()
-                st.rerun()
+        if st.button("削除", key=f"del_{word_id}"):
+            delete_stop_word(word_id)
+            st.cache_data.clear()
+            st.rerun()

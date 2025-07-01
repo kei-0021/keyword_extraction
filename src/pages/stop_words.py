@@ -63,11 +63,15 @@ st.subheader("現在のストップワード")
 for entry in stop_words:
     word = entry["word"]
     word_id = entry["id"]
+
     col1, col2 = st.columns([8, 1])
     with col1:
         st.write(word)
     with col2:
-        if st.button("削除", key=f"del_{word_id}"):
-            delete_stop_word(word_id)
-            st.cache_data.clear()
-            st.rerun()
+        # 削除ボタンをフォームでラップ（keyで一意化）
+        with st.form(key=f"form_del_{word_id}", clear_on_submit=True):
+            submitted = st.form_submit_button("削除")
+            if submitted:
+                delete_stop_word(word_id)
+                st.cache_data.clear()
+                st.rerun()

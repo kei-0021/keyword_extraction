@@ -4,6 +4,7 @@ supabase
 oauth2client
 notion-client
 streamlit>=1.25
+mecab-python3
 gspread
 pandas
 plotly

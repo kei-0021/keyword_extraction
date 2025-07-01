@@ -25,7 +25,7 @@ def generate_bar_chart(
         x="単語",
         y="出現回数",
         color_discrete_sequence=["#63D194"],  # ミントグリーン
-        title="過去一ヶ月における頻出ごとその出現回数",
+        title="過去一ヶ月における頻出単語とその出現回数",
     )
 
     fig.update_layout(

@@ -1,4 +1,3 @@
-# ベースイメージ（必要なPythonバージョンに合わせて変更可）
 FROM python:3.11
 
 # 必要なパッケージをインストール
@@ -21,7 +20,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 \
     libasound2 \
     fonts-noto-cjk \
+    wget \
+    gnupg \
  && rm -rf /var/lib/apt/lists/*
+
+# Google Chrome のインストール
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-linux-signing-key.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-key.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+    apt-get update && apt-get install -y --no-install-recommends google-chrome-stable && \
+    rm -rf /var/lib/apt/lists/*
 
 # 作業ディレクトリを作成
 WORKDIR /app
@@ -29,7 +36,7 @@ WORKDIR /app
 # ソースコードをコピー
 COPY . /app
 
-# 必要なPythonパッケージをインストール
+# 必要な Python パッケージをインストール
 RUN pip install --no-cache-dir -r requirements.txt
 
 # MeCab 設定ファイルのリンク（必要に応じて）

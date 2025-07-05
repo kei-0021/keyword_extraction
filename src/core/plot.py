@@ -1,4 +1,5 @@
-# DataFrameに変換
+"""plotlyを使用して、頻出単語の棒グラフを生成するモジュール."""
+
 import datetime
 from collections import Counter
 

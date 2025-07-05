@@ -1,3 +1,5 @@
+"""形態素解析を行うモジュール."""
+
 from collections import Counter
 
 import MeCab

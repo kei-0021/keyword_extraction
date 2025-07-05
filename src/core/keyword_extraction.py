@@ -1,3 +1,5 @@
+"""キーワード抽出処理のメインモジュール。"""
+
 import base64
 import os
 import tempfile
@@ -7,16 +9,16 @@ import kaleido
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.core.notion_handler import fetch_good_things
 from src.core.plot import generate_bar_chart
 from src.core.word_analyser import analyse_word
-from src.utils.supabase import get_supabase_client
+from src.services.notion_handler import fetch_good_things
+from src.services.supabase_client import get_supabase_client
 
 TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
 DAY_LIMIT = 30  # 過去何日分のデータを取得するか
 
 
-def main() -> Counter:
+def run_keyword_extraction() -> Counter:
     IS_RENDER = os.getenv("RENDER") == "true"
     IS_DEV = not IS_RENDER  # RENDERがtrueでなければ開発環境
 
@@ -64,6 +66,7 @@ def main() -> Counter:
 
     # 解析処理は共通
     word_count: Counter = analyse_word(all_text, "custom_dict/user.dic", stop_words_set)
+    print(word_count.most_common(TOP_N))
 
     if IS_DEV:
         fig = generate_bar_chart(word_count)
@@ -73,10 +76,9 @@ def main() -> Counter:
         fig.write_image("output/keyword_chart.png")
 
         print("グラフの出力が完了しました")
-        print(word_count.most_common(TOP_N))
 
     return word_count
 
 
 if __name__ == "__main__":
-    main()
+    run_keyword_extraction()

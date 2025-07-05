@@ -1,3 +1,5 @@
+"""CSVファイルをMeCabの辞書形式に変換するためのモジュール."""
+
 import csv
 import os
 import subprocess

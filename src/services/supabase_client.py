@@ -1,3 +1,5 @@
+"""Supabaseクライアントの管理を行い、ユーザー認証を提供するモジュール."""
+
 import os
 
 import streamlit as st

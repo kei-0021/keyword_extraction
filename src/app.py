@@ -2,9 +2,9 @@ import io
 
 import streamlit as st
 
-from src.core.main import main as run_keyword_extraction
+from src.core.keyword_extraction import run_keyword_extraction
 from src.core.plot import generate_bar_chart
-from src.utils.auth import require_login, show_login
+from src.services.supabase_auth import require_login, show_login
 
 # --- アプリ起動時のルート処理 ---
 if "user" not in st.session_state:

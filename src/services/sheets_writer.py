@@ -1,3 +1,5 @@
+"""Google Sheetsに頻出単語の出現回数を記録するモジュール."""
+
 from collections import Counter
 
 import gspread

@@ -1,3 +1,5 @@
+"""Notionから「良かったこと」を取得するモジュール."""
+
 from notion_client import Client
 
 

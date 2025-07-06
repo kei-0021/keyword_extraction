@@ -65,7 +65,7 @@ def run_keyword_extraction() -> Counter:
         # ユーザー辞書をSupabaseから取得し一時ファイルでMeCab辞書生成
         print("build_user_dic_from_db: start")
         response = (
-            supabase.table("user_entry")
+            supabase.table("user_dict")
             .select("word, part_of_speech, reading, pronunciation")
             .eq("user_id", user_id)
             .execute()

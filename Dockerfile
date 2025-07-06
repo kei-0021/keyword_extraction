@@ -30,6 +30,9 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
     apt-get update && apt-get install -y --no-install-recommends google-chrome-stable && \
     rm -rf /var/lib/apt/lists/*
 
+# PATHにmecab-dict-indexの場所を追加
+ENV PATH="/usr/lib/mecab:${PATH}"
+
 # 作業ディレクトリを作成
 WORKDIR /app
 

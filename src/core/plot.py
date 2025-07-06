@@ -43,7 +43,10 @@ def generate_bar_chart(
 
     # ここで注釈を追加
     fig.add_annotation(
-        text=f"データ期間: {start_date.strftime('%Y年%m月%d日')} ~ {end_date.strftime('%Y年%m月%d日')}",
+        text=(
+            f"データ期間: {start_date.strftime('%Y年%m月%d日')} ~ "
+            f"{end_date.strftime('%Y年%m月%d日')}"
+        ),
         xref="paper",
         yref="paper",
         x=1,

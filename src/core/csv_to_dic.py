@@ -8,22 +8,26 @@ import tempfile
 
 def build_user_dic_from_csv_data(csv_data: str, dic_dir: str) -> str:
     """本番用: Supabaseから取得したCSVデータからMeCab辞書を生成する."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_csv_path = os.path.join(tmpdir, "user_entry.csv")
-        output_csv_path = os.path.join(tmpdir, "user.csv")
+    tmpdir = tempfile.mkdtemp()  # 削除されない一時ディレクトリ
+    input_csv_path = os.path.join(tmpdir, "user_entry.csv")
+    output_csv_path = os.path.join(tmpdir, "user.csv")
+    user_dic_path = os.path.join(tmpdir, "user.dic")
 
-        # CSV文字列を書き出す
-        with open(input_csv_path, "w", encoding="utf-8") as f:
-            f.write(csv_data)
+    # CSV文字列を書き出す
+    with open(input_csv_path, "w", encoding="utf-8") as f:
+        f.write(csv_data)
 
-        # CSV → MeCab用CSVに変換（ヘッダーなし）
-        _csv_to_dic(input_csv_path, output_csv_path, has_header=False)
+    # CSV → MeCab用CSVに変換（ヘッダーなし）
+    _csv_to_dic(input_csv_path, output_csv_path, has_header=False)
 
-        # MeCab辞書をビルド
-        _build_mecab_dict(dic_dir, output_csv_path, tmpdir)
+    # MeCab辞書をビルド
+    _build_mecab_dict(dic_dir, output_csv_path, tmpdir)
 
-        # 辞書ファイルのパスを返す
-        return os.path.join(tmpdir, "user.dic")
+    # 存在確認
+    if not os.path.exists(user_dic_path):
+        raise FileNotFoundError(f"辞書ファイルが見つかりません: {user_dic_path}")
+
+    return user_dic_path
 
 
 def build_user_dic_from_local_file(entry_csv_path: str, dic_dir: str, output_dir: str):
@@ -59,7 +63,7 @@ def _build_mecab_dict(dic_dir: str, csv_file: str, output_dir: str):
     try:
         subprocess.run(
             [
-                "mecab-dict-index",
+                "/usr/lib/mecab/mecab-dict-index",  # 確実なパスを指定
                 "-d",
                 dic_dir,
                 "-u",

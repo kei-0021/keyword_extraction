@@ -1,3 +1,5 @@
+import re
+
 import streamlit as st
 
 from src.services.supabase_auth import require_login
@@ -54,11 +56,13 @@ if st.button("追加する") and new_word and new_reading:
     cleaned = (new_word.strip(), new_reading.strip())
     if cleaned in existing_entries:
         st.warning("その単語と読みの組み合わせは既に登録されています")
+    elif not re.fullmatch(r"[ァ-ンヴー]+", cleaned[1]):
+        st.warning("読みはカタカナで入力してください")
     else:
         add_user_entry(*cleaned)
         st.success(f"{cleaned[0]} を辞書に追加しました")
         st.cache_data.clear()
-        st.rerun()
+        st.experimental_rerun()
 
 st.subheader("登録済みの単語")
 
@@ -75,4 +79,4 @@ for entry in user_dict_sorted:
         if st.button("削除", key=f"del_{entry_id}"):
             delete_user_entry(entry_id)
             st.cache_data.clear()
-            st.rerun()
+            st.experimental_rerun()

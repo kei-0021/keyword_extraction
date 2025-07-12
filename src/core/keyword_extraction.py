@@ -6,6 +6,7 @@ import tempfile
 from collections import Counter
 
 import kaleido
+import MeCab
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -20,6 +21,15 @@ from src.services.supabase_client import get_supabase_client
 
 TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
 DAY_LIMIT = 30  # 過去何日分のデータを取得するか
+
+
+@st.cache_resource
+def get_tagger(custom_dict_path: str) -> MeCab.Tagger:
+    """MeCab Tagger をキャッシュして取得する"""
+    print("🟡 MeCab.Tagger を新規生成します（キャッシュミス）")
+    return MeCab.Tagger(
+        f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
+    )
 
 
 def run_keyword_extraction() -> Counter:
@@ -50,7 +60,6 @@ def run_keyword_extraction() -> Counter:
             GOOGLE_CREDENTIALS_JSON = tmp.name
 
         supabase = get_supabase_client()
-        user_id = None
         try:
             user_id = st.session_state.user.id
         except Exception:
@@ -83,7 +92,6 @@ def run_keyword_extraction() -> Counter:
 
             temp_dic = tempfile.NamedTemporaryFile(delete=False, suffix=".dic")
             temp_dic.close()
-            print("空の辞書ファイルを作成し、パスを返します")
             custom_dict_path = temp_dic.name
         else:
             csv_data = "\n".join(
@@ -122,8 +130,12 @@ def run_keyword_extraction() -> Counter:
     # Notionからデータ取得
     all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LIMIT)
 
-    # 形態素解析とカウント
-    word_count: Counter = analyse_word(all_text, custom_dict_path, stop_words_set)
+    # Taggerをキャッシュから取得
+    print("🔵 get_tagger を呼び出します")
+    tagger = get_tagger(custom_dict_path)
+
+    # 形態素解析と頻度カウント
+    word_count: Counter = analyse_word(all_text, tagger, stop_words_set)
     print(word_count.most_common(TOP_N))
 
     # 開発時のみグラフを出力

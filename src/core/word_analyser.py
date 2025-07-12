@@ -6,7 +6,7 @@ import MeCab
 
 
 # メインの処理
-def analyse_word(text: str, custom_dict_path: str, stop_words: set[str]) -> Counter:
+def analyse_word(text: str, tagger: MeCab.Tagger, stop_words: set[str]) -> Counter:
     """
     文章を形態素解析し、名詞のみを抽出して頻度カウントを行う。
 
@@ -15,17 +15,12 @@ def analyse_word(text: str, custom_dict_path: str, stop_words: set[str]) -> Coun
 
     Args:
         text (str): 解析対象の文章。
-        custom_dict_path (str): MeCabのユーザー辞書ファイル (.dic)のパス。
+        tagger (MeCab.Tagger): MeCabのタグgerインスタンス。
         stop_words (set[str]): 除外対象のストップワード集合。
 
     Returns:
         Counter: 名詞ごとの出現回数を表すカウンターオブジェクト。
     """
-
-    # MeCabインスタンスを作成
-    tagger = MeCab.Tagger(
-        f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
-    )
 
     # 形態素解析を行い、結果を取得
     node: MeCab.Node = tagger.parseToNode(text)

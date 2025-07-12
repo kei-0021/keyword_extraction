@@ -16,6 +16,7 @@ from src.core.csv_to_dic import (
 )
 from src.core.plot import generate_bar_chart
 from src.core.word_analyser import analyse_word
+from src.logs.logger import MyLogger
 from src.services.notion_handler import fetch_good_things
 from src.services.supabase_client import get_supabase_client
 
@@ -24,9 +25,8 @@ DAY_LIMIT = 30  # 過去何日分のデータを取得するか
 
 
 @st.cache_resource
-def get_tagger(custom_dict_path: str) -> MeCab.Tagger:
-    """MeCab Tagger をキャッシュして取得する"""
-    print("🟡 MeCab.Tagger を新規生成します（キャッシュミス）")
+def get_tagger(custom_dict_path: str, _logger: MyLogger) -> MeCab.Tagger:
+    _logger.debug("MeCab.Tagger を新規生成します")
     return MeCab.Tagger(
         f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
     )
@@ -40,6 +40,8 @@ def run_keyword_extraction() -> Counter:
     - Render環境ではSupabaseからユーザー辞書を取得しMeCab辞書を一時生成
     - それ以外は開発環境としてローカル辞書を利用し、なければビルドする
     """
+    log = MyLogger()
+    print(f"{'-' * 40} run_keyword_extraction {'-' * 40}")
 
     IS_RENDER = os.getenv("RENDER") == "true"
 
@@ -128,22 +130,25 @@ def run_keyword_extraction() -> Counter:
         raise ValueError("環境変数が不足しています。.envファイルを確認してください。")
 
     # Notionからデータ取得
+    log.start("Notionデータ取得")
     all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LIMIT)
+    log.end("Notionデータ取得")
 
     # Taggerをキャッシュから取得
-    print("🔵 get_tagger を呼び出します")
-    tagger = get_tagger(custom_dict_path)
+    log.debug("get_tagger を呼び出します")
+    tagger = get_tagger(custom_dict_path, log)
 
     # 形態素解析と頻度カウント
     word_count: Counter = analyse_word(all_text, tagger, stop_words_set)
-    print(word_count.most_common(TOP_N))
+    log.debug(word_count.most_common(TOP_N))
 
     # 開発時のみグラフを出力
     if not IS_RENDER:
+        log.start("グラフ出力")
         fig = generate_bar_chart(word_count)
         kaleido.get_chrome_sync()
         fig.write_image("output/keyword_chart.png")
-        print("グラフの出力が完了しました")
+        log.end("グラフ出力")
 
     return word_count
 

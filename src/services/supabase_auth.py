@@ -48,10 +48,19 @@ def show_login():
             )
 
             if result.user:
+                # セッション情報を先に session_state にセット
                 st.session_state.user = result.user
                 st.session_state.token = result.session.access_token
                 st.session_state.login_time = time.time()
-                supabase.auth.set_session(result.session)  # ✅ 必ずトークンを有効に
+
+                # セッションを明示的に設定（access_token と refresh_token を使う）
+                supabase.auth.set_session(
+                    access_token=result.session.access_token,
+                    refresh_token=result.session.refresh_token,
+                )
+
+                # 一拍おいて rerun（streamlit の仕様対策）
+                time.sleep(0.3)
                 st.rerun()
             else:
                 st.error("IDとパスワードのペアが不正です。もう一度ご確認ください。")

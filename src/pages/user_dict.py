@@ -62,7 +62,7 @@ if st.button("追加する") and new_word and new_reading:
         add_user_entry(*cleaned)
         st.success(f"{cleaned[0]} を辞書に追加しました")
         st.cache_data.clear()
-        st.experimental_rerun()
+        st.rerun()
 
 st.subheader("登録済みの単語")
 
@@ -79,4 +79,4 @@ for entry in user_dict_sorted:
         if st.button("削除", key=f"del_{entry_id}"):
             delete_user_entry(entry_id)
             st.cache_data.clear()
-            st.experimental_rerun()
+            st.rerun()

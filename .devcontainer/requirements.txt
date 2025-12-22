@@ -1,9 +1,9 @@
 ruff
-dotenv
+python-dotenv
 supabase
 oauth2client
 notion-client
-streamlit>=1.25
+streamlit==1.51.0
 mecab-python3
 gspread
 pandas

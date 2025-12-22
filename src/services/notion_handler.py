@@ -5,10 +5,10 @@ from notion_client import Client
 
 def fetch_good_things(token: str, database_id: str, limit: int = 30) -> str:
     # Notion APIのクライアントを初期化
-    notion = Client(auth=token)
+    client = Client(auth=token)
 
     # データベースから最新○件を「日付」降順で取得
-    response = notion.query(
+    response = client.databases.query(
         database_id=database_id,
         sorts=[{"property": "日付", "direction": "descending"}],
         page_size=limit,

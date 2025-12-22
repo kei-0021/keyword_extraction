@@ -8,7 +8,7 @@ def fetch_good_things(token: str, database_id: str, limit: int = 30) -> str:
     notion = Client(auth=token)
 
     # データベースから最新○件を「日付」降順で取得
-    response = notion.databases.query(
+    response = notion.query(
         database_id=database_id,
         sorts=[{"property": "日付", "direction": "descending"}],
         page_size=limit,

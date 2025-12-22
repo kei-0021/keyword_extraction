@@ -30,7 +30,6 @@ Jinja2==3.1.6
 jsonschema==4.25.1
 jsonschema-specifications==2025.9.1
 kaleido==1.2.0
--e git+https://github.com/kei-0021/keyword_extraction.git@9311e29292561a5d897b1392cfa2e164709c9b8f#egg=keyword_extraction
 logistro==2.0.1
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3

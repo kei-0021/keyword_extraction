@@ -1,13 +1,25 @@
 """Supabaseでのユーザー認証を提供するモジュール."""
 
 import time
-from typing import Any, cast
+from typing import Protocol, TypedDict, cast
 
 import streamlit as st
 
 from src.services.supabase_client import get_supabase_client
 
 MAX_SESSION_DURATION = 15 * 60  # 秒単位
+
+
+# 1. ユーザーオブジェクトが持つべき構造を定義（属性アクセス用）
+class UserLike(Protocol):
+    id: str
+    email: str | None
+
+
+# 2. セッションデータの構造を定義
+class SessionToken(TypedDict):
+    access_token: str
+    refresh_token: str
 
 
 def restore_session() -> None:
@@ -17,18 +29,16 @@ def restore_session() -> None:
     if "token" in st.session_state and "user" not in st.session_state:
         supabase = get_supabase_client()
         try:
-            # token の中身を辞書としてキャスト
-            session_data = cast(dict[str, Any], st.session_state.token)
+            session_data = cast(SessionToken, st.session_state.token)
 
             # トークンを取り出す
             a_token = session_data.get("access_token")
             r_token = session_data.get("refresh_token")
 
-            # 型ガード: 両方のトークンが文字列として存在することを保証
             if not isinstance(a_token, str) or not isinstance(r_token, str):
                 raise ValueError("Incomplete or invalid session token type")
 
-            # ✅ 認証を有効にする
+            # 認証を有効にする
             supabase.auth.set_session(
                 access_token=a_token,
                 refresh_token=r_token,
@@ -37,27 +47,20 @@ def restore_session() -> None:
             # ユーザー情報を取得
             response = supabase.auth.get_user()
 
-            # --- Pylance対策の決定版 ---
-            # 1. response 自体が None でないか
-            # 2. response.user が None でないか
-            # この2つを同時にローカル変数へ取り出しながらチェックします
-
-            current_user = None
-            if response is not None:
-                current_user = response.user
+            # gotrue.User の代わりに UserLike(Protocol) で型を絞り込む
+            current_user: UserLike | None = None
+            if response is not None and hasattr(response, "user"):
+                current_user = cast(UserLike, response.user)
 
             if current_user is not None:
-                # このブロック内では current_user は確実に 'User' 型
                 st.session_state.user = current_user
             else:
                 # ユーザーが取得できなかった場合の処理
                 st.error("ログインセッションが切れました。再ログインしてください。")
                 st.session_state.pop("token", None)
                 st.stop()
-                return
 
         except Exception as e:
-            # Pylance: 未使用の e を防ぐために print か logger を使用
             print(f"Session restoration failed: {e}")
             st.warning("セッションの復元に失敗しました。再ログインしてください。")
             # 整合性を保つため、中途半端なデータは削除
@@ -65,19 +68,23 @@ def restore_session() -> None:
             st.session_state.pop("user", None)
 
 
-def require_login():
+def require_login() -> None:
     restore_session()
     login_time = st.session_state.get("login_time")
     now = time.time()
-    if not st.session_state.get("user") or (
-        login_time and now - login_time > MAX_SESSION_DURATION
-    ):
+
+    is_expired = False
+    if isinstance(login_time, (int, float)):
+        if now - login_time > MAX_SESSION_DURATION:
+            is_expired = True
+
+    if not st.session_state.get("user") or is_expired:
         st.warning("セッションが切れました。再ログインしてください。")
         st.session_state.clear()
         st.stop()
 
 
-def show_login():
+def show_login() -> None:
     supabase = get_supabase_client()
 
     st.title("ログイン")
@@ -91,17 +98,17 @@ def show_login():
                 {"email": email, "password": password}
             )
 
-            # Pylance対策：session と user の両方が存在することをチェック
+            # result.user が UserLike プロトコルを満たしているかチェック
             if result.session and result.user:
                 # 1. ユーザー情報をセッションに保存
                 st.session_state.user = result.user
 
                 # 2. トークン情報を辞書形式で保存（restore_sessionで使いやすくするため）
-                st.session_state.token = {
+                token_data: SessionToken = {
                     "access_token": result.session.access_token,
                     "refresh_token": result.session.refresh_token,
                 }
-
+                st.session_state.token = token_data
                 st.session_state.login_time = time.time()
 
                 # 3. 最新のSDK仕様に合わせてトークンをセット

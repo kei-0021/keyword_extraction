@@ -1,10 +1,17 @@
 import re
-from typing import Any, cast
+from typing import TypedDict, cast
 
 import streamlit as st
 
 from src.services.supabase_auth import require_login
 from src.services.supabase_client import get_supabase_client
+
+
+class UserDictEntry(TypedDict):
+    id: int
+    word: str
+    reading: str
+
 
 require_login()
 
@@ -15,7 +22,8 @@ st.title("ユーザー辞書")
 
 
 @st.cache_data(ttl=60)
-def fetch_user_dict() -> list[dict[str, Any]]:
+def fetch_user_dict() -> list[UserDictEntry]:
+    """DBから辞書を取得し、具体的な型を付けて返す。"""
     response = (
         supabase.table("user_dict")
         .select("id, word, reading")
@@ -24,12 +32,12 @@ def fetch_user_dict() -> list[dict[str, Any]]:
     )
     res_data = response.data
     if isinstance(res_data, list):
-        # 内部でキャストすることで、呼び出し側をクリーンに保つ
-        return cast(list[dict[str, Any]], res_data)
+        # 戻り値の型に合わせてキャスト
+        return cast(list[UserDictEntry], res_data)
     return []
 
 
-def add_user_entry(word, reading):
+def add_user_entry(word: str, reading: str) -> None:
     # 品詞は「名詞」、発音は読みと同じものを自動設定
     supabase.table("user_dict").insert(
         {
@@ -42,15 +50,15 @@ def add_user_entry(word, reading):
     ).execute()
 
 
-def delete_user_entry(entry_id):
+def delete_user_entry(entry_id: int) -> None:
     supabase.table("user_dict").delete().eq("id", entry_id).eq(
         "user_id", user_id
     ).execute()
 
 
-# 呼び出し側の cast を削除
+# 呼び出し側
 user_dict = fetch_user_dict()
-existing_entries = {(e["word"], e["reading"]) for e in user_dict}
+existing_entries = {(str(e["word"]), str(e["reading"])) for e in user_dict}
 
 col1, col2 = st.columns(2)
 with col1:
@@ -72,9 +80,11 @@ if st.button("追加する") and new_word and new_reading:
 
 st.subheader("登録済みの単語")
 
-user_dict_sorted = sorted(user_dict, key=lambda x: x["word"])
+user_dict_sorted = sorted(user_dict, key=lambda x: str(x["word"]))
 for entry in user_dict_sorted:
-    word, reading, entry_id = entry["word"], entry["reading"], entry["id"]
+    word = str(entry["word"])
+    reading = str(entry["reading"])
+    entry_id = int(entry["id"])
 
     col1, col2, col3 = st.columns([4, 4, 1])
     with col1:

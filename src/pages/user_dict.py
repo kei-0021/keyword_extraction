@@ -1,4 +1,5 @@
 import re
+from typing import Any, cast
 
 import streamlit as st
 
@@ -14,14 +15,18 @@ st.title("ユーザー辞書")
 
 
 @st.cache_data(ttl=60)
-def fetch_user_dict():
+def fetch_user_dict() -> list[dict[str, Any]]:
     response = (
         supabase.table("user_dict")
         .select("id, word, reading")
         .eq("user_id", user_id)
         .execute()
     )
-    return response.data or []
+    res_data = response.data
+    if isinstance(res_data, list):
+        # 内部でキャストすることで、呼び出し側をクリーンに保つ
+        return cast(list[dict[str, Any]], res_data)
+    return []
 
 
 def add_user_entry(word, reading):
@@ -43,6 +48,7 @@ def delete_user_entry(entry_id):
     ).execute()
 
 
+# 呼び出し側の cast を削除
 user_dict = fetch_user_dict()
 existing_entries = {(e["word"], e["reading"]) for e in user_dict}
 
@@ -62,7 +68,7 @@ if st.button("追加する") and new_word and new_reading:
         add_user_entry(*cleaned)
         st.success(f"{cleaned[0]} を辞書に追加しました")
         st.cache_data.clear()
-        st.experimental_rerun()
+        st.rerun()
 
 st.subheader("登録済みの単語")
 
@@ -79,4 +85,4 @@ for entry in user_dict_sorted:
         if st.button("削除", key=f"del_{entry_id}"):
             delete_user_entry(entry_id)
             st.cache_data.clear()
-            st.experimental_rerun()
+            st.rerun()

@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import streamlit as st
 
 from src.services.supabase_auth import require_login
@@ -15,14 +17,19 @@ user = st.session_state.user
 st.title("ストップワード管理")
 
 
-# データ取得
+# データ取得: 内部で型を確定させてから返す
 @st.cache_data(ttl=60)
-def fetch_stop_words():
+def fetch_stop_words() -> list[dict[str, Any]]:
     user_id = st.session_state.user.id
     response = (
         supabase.table("stop_words").select("id, word").eq("user_id", user_id).execute()
     )
-    return response.data or []
+
+    res_data = response.data
+    if isinstance(res_data, list):
+        # ここで関数内部で一度だけ cast し、戻り値の型と一致させる
+        return cast(list[dict[str, Any]], res_data)
+    return []
 
 
 # 追加

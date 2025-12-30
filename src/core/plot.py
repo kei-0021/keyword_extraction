@@ -10,7 +10,7 @@ from plotly.graph_objects import Figure
 
 
 def generate_bar_chart(
-    word_count: Counter, TOP_N: int = 5, DAY_LIMIT: int = 30
+    word_count: Counter[str], TOP_N: int = 5, DAY_LIMIT: int = 30
 ) -> Figure:
     df = pd.DataFrame(word_count.most_common(TOP_N), columns=["単語", "出現回数"])
 

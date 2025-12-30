@@ -4,6 +4,7 @@ import base64
 import os
 import tempfile
 from collections import Counter
+from typing import Any, Optional, cast
 
 import kaleido
 import streamlit as st
@@ -22,7 +23,7 @@ TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
 DAY_LIMIT = 30  # 過去何日分のデータを取得するか
 
 
-def run_keyword_extraction() -> Counter:
+def run_keyword_extraction() -> Counter[str]:
     """Notionデータからキーワードを抽出し、名詞頻度のカウント結果を返す。
 
     - Render環境かどうかで処理を切り替える
@@ -33,10 +34,15 @@ def run_keyword_extraction() -> Counter:
 
     IS_RENDER = os.getenv("RENDER") == "true"
 
+    # 型をあらかじめ定義しておく
+    notion_token: Optional[str] = None
+    database_id: Optional[str] = None
+    google_creds_json: Optional[str] = None
+
     if IS_RENDER:
         # Render環境（環境変数から取得し、jsonを一時ファイルに保存）
-        NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-        DATABASE_ID = os.getenv("DATABASE_ID")
+        notion_token = os.getenv("NOTION_TOKEN")
+        database_id = os.getenv("DATABASE_ID")
 
         b64_creds = os.getenv("GOOGLE_CREDENTIALS_JSON")
         if not b64_creds:
@@ -47,59 +53,57 @@ def run_keyword_extraction() -> Counter:
             mode="w+b", delete=False, suffix=".json"
         ) as tmp:
             tmp.write(decoded)
-            GOOGLE_CREDENTIALS_JSON = tmp.name
+            google_creds_json = tmp.name
 
         supabase = get_supabase_client()
-        user_id = None
-        try:
-            user_id = st.session_state.user.id
-        except Exception:
+
+        # session_state の user 取得を型安全にする
+        user_id: str = ""
+        if "user" in st.session_state and hasattr(st.session_state.user, "id"):
+            user_id = str(st.session_state.user.id)
+        else:
             user_id = os.getenv("USER_ID") or ""
 
-        # ストップワードはSupabaseから取得
-        response = (
+        # ストップワードの取得とキャスト
+        response_sw = (
             supabase.table("stop_words").select("word").eq("user_id", user_id).execute()
         )
-        stop_words_set = set(item["word"] for item in response.data)
+        sw_data = cast(list[dict[str, Any]], response_sw.data)
+        stop_words_set = set(str(item["word"]) for item in sw_data)
 
-        # ユーザー辞書をSupabaseから取得し一時ファイルでMeCab辞書生成
+        # ユーザー辞書の取得
         print("build_user_dic_from_db: start")
-        response = (
+        response_ud = (
             supabase.table("user_dict")
             .select("word, part_of_speech, reading, pronunciation")
             .eq("user_id", user_id)
             .execute()
         )
-        entries = response.data or []
+        entries = cast(list[dict[str, Any]], response_ud.data or [])
         print(f"DBからユーザー辞書取得件数: {len(entries)}")
 
         if not entries:
             print("ユーザー辞書が空なので空ファイルを作成")
-            temp_csv = tempfile.NamedTemporaryFile(
-                mode="w", encoding="utf-8", delete=False, suffix=".csv"
-            )
-            temp_csv.write("")
-            temp_csv.close()
-
             temp_dic = tempfile.NamedTemporaryFile(delete=False, suffix=".dic")
             temp_dic.close()
-            print("空の辞書ファイルを作成し、パスを返します")
             custom_dict_path = temp_dic.name
         else:
-            csv_data = "\n".join(
+            # entries が list[dict] なので Pylance は e['word'] を許可する
+            csv_lines = [
                 f"{e['word']},{e['part_of_speech']},{e['reading']},{e['pronunciation']}"
                 for e in entries
-            )
+            ]
+            csv_data = "\n".join(csv_lines)
             custom_dict_path = build_user_dic_from_csv_data(
                 csv_data, dic_dir="/usr/share/mecab/dic/ipadic"
             )
 
     else:
-        # それ以外（開発環境）：.env読み込み、ローカル辞書利用
+        # 開発環境: .env読み込み、ローカル辞書利用
         load_dotenv(dotenv_path="config/.env")
-        NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-        DATABASE_ID = os.getenv("DATABASE_ID")
-        GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_PATH")
+        notion_token = os.getenv("NOTION_TOKEN")
+        database_id = os.getenv("DATABASE_ID")
+        google_creds_json = os.getenv("GOOGLE_CREDENTIALS_PATH")
 
         # ストップワードはローカルファイルから読み込み
         with open("custom_dict/stop_words.txt", encoding="utf-8") as f:
@@ -115,15 +119,15 @@ def run_keyword_extraction() -> Counter:
                 output_dir="custom_dict",
             )
 
-    # 必須の環境変数が揃っているか確認
-    if not all([NOTION_TOKEN, DATABASE_ID, GOOGLE_CREDENTIALS_JSON]):
+    # 必須の環境変数が残っているか確認
+    if not notion_token or not database_id or not google_creds_json:
         raise ValueError("環境変数が不足しています。.envファイルを確認してください。")
 
     # Notionからデータ取得
-    all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LIMIT)
+    all_text: str = fetch_good_things(notion_token, database_id, DAY_LIMIT)
 
     # 形態素解析とカウント
-    word_count: Counter = analyse_word(all_text, custom_dict_path, stop_words_set)
+    word_count = analyse_word(all_text, custom_dict_path, stop_words_set)
     print(word_count.most_common(TOP_N))
 
     # 開発時のみグラフを出力

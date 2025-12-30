@@ -12,6 +12,7 @@ from plotly.graph_objects import Figure
 def generate_bar_chart(
     word_count: Counter[str], TOP_N: int = 5, DAY_LIMIT: int = 30
 ) -> Figure:
+    """開発環境: plotlyを使用して、頻出単語の棒グラフを生成する関数."""
     # データを dict のリストに変換して渡す
     data = [
         {"単語": word, "出現回数": count}

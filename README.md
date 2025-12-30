@@ -34,3 +34,14 @@ PYTHONPATH=. python3 -m streamlit run src/app.py
 - Render上でホスティングしています
 - 以下のサイトにアクセスしてください (2025.7 現在非公開)
    - https://keyword-extraction-5i0z.onrender.com/
+
+
+## コード品質の担保 (開発者向け)
+- 以下のコマンドで `pyright` による型チェックを行います
+```
+hatch run check
+```
+- 以下のコマンドでフォーマットを整えます
+```
+hatch fmt
+```

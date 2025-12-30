@@ -30,7 +30,7 @@ def analyse_word(
     )
 
     # 形態素解析を行い、結果を取得
-    node: MeCab.Node = tagger.parseToNode(text)
+    node = tagger.parseToNode(text)
 
     # 名詞のみを抽出
     noun_list: list[str] = []

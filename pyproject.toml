@@ -16,6 +16,7 @@ dependencies = [
     "supabase",
     "gspread",
     "oauth2client",
+    "pyright"
 ]
 
 [tool.hatch.envs.default]
@@ -24,6 +25,14 @@ path = ".venv"
 
 [tool.hatch.envs.default.scripts]
 app = "streamlit run main.py"
+check = "pyright"
+
+# Pyright（Pylance）の詳細設定
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "basic"
+pythonVersion = "3.11"
+pythonPlatform = "Linux"
 
 [tool.ruff]
 line-length = 88

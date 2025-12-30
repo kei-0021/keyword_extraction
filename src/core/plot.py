@@ -12,7 +12,12 @@ from plotly.graph_objects import Figure
 def generate_bar_chart(
     word_count: Counter[str], TOP_N: int = 5, DAY_LIMIT: int = 30
 ) -> Figure:
-    df = pd.DataFrame(word_count.most_common(TOP_N), columns=["単語", "出現回数"])
+    # データを dict のリストに変換して渡す
+    data = [
+        {"単語": word, "出現回数": count}
+        for word, count in word_count.most_common(TOP_N)
+    ]
+    df = pd.DataFrame(data)
 
     # 今日の日付と30日前の日付を計算
     jst = pytz.timezone("Asia/Tokyo")

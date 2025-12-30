@@ -9,5 +9,13 @@
   },
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "python.analysis.typeCheckingMode":"basic",
+  "python.analysis.diagnosticSeverityOverrides": {
+      "reportMissingTypeStubs": "none",
+      "reportUnknownMemberType": "none",
+      "reportUnknownArgumentType": "none",
+      "reportUnknownVariableType": "none",
+      "reportAttributeAccessIssue": "none"
   }
 }

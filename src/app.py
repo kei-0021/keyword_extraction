@@ -1,4 +1,6 @@
 import io
+from collections import Counter
+from typing import cast
 
 import streamlit as st
 
@@ -36,8 +38,10 @@ if st.button("解析開始", disabled=is_running):
 
 # 解析結果の表示（グラフ）
 if "word_count" in st.session_state:
-    fig = generate_bar_chart(st.session_state["word_count"])
+    word_count = cast(Counter[str], st.session_state["word_count"])
 
+    # グラフ生成
+    fig = generate_bar_chart(word_count)
     st.plotly_chart(fig, use_container_width=True)
 
     # PNGデータをバイトストリームで取得

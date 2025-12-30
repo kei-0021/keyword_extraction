@@ -13,5 +13,11 @@ def get_supabase_client() -> Client:
         load_dotenv("config/.env")
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_KEY")
+
+        if not url or not key:
+            raise ValueError(
+                "SUPABASE_URL または SUPABASE_KEY が環境変数に設定されていません。"
+            )
+
         st.session_state.supabase = create_client(url, key)
     return st.session_state.supabase

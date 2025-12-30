@@ -6,7 +6,9 @@ import MeCab
 
 
 # メインの処理
-def analyse_word(text: str, custom_dict_path: str, stop_words: set[str]) -> Counter:
+def analyse_word(
+    text: str, custom_dict_path: str, stop_words: set[str]
+) -> Counter[str]:
     """
     文章を形態素解析し、名詞のみを抽出して頻度カウントを行う。
 
@@ -28,10 +30,10 @@ def analyse_word(text: str, custom_dict_path: str, stop_words: set[str]) -> Coun
     )
 
     # 形態素解析を行い、結果を取得
-    node: MeCab.Node = tagger.parseToNode(text)
+    node = tagger.parseToNode(text)
 
     # 名詞のみを抽出
-    noun_list = []
+    noun_list: list[str] = []
     while node:
         features = node.feature.split(",")
         if features[0] == "名詞":

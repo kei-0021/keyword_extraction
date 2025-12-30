@@ -1,7 +1,15 @@
+from typing import TypedDict, cast
+
 import streamlit as st
 
 from src.services.supabase_auth import require_login
 from src.services.supabase_client import get_supabase_client
+
+
+class StopWordEntry(TypedDict):
+    id: int  # または UUID なら str
+    word: str
+
 
 # ログインを必須にする
 require_login()
@@ -15,26 +23,30 @@ user = st.session_state.user
 st.title("ストップワード管理")
 
 
-# データ取得
+# データ取得: 内部で型を確定させてから返す
 @st.cache_data(ttl=60)
-def fetch_stop_words():
+def fetch_stop_words() -> list[StopWordEntry]:
     user_id = st.session_state.user.id
     response = (
         supabase.table("stop_words").select("id, word").eq("user_id", user_id).execute()
     )
-    return response.data or []
+
+    res_data = response.data
+    if isinstance(res_data, list):
+        # 外部の JSON 型を StopWordEntry 型に変換して返す
+        return cast(list[StopWordEntry], res_data)
+    return []
 
 
 # 追加
-def add_stop_word(word):
+def add_stop_word(word: str) -> None:
     user_id = st.session_state.user.id
     supabase.table("stop_words").insert({"user_id": user_id, "word": word}).execute()
 
 
 # 削除
-def delete_stop_word(word_id):
+def delete_stop_word(word_id: int) -> None:
     print("現在のユーザーID:", st.session_state.user.id)
-
     print(f"削除リクエスト: id={word_id} / type={type(word_id)}")
 
     response = (
@@ -51,7 +63,7 @@ def delete_stop_word(word_id):
 
 # 現在のストップワード一覧を取得
 stop_words = fetch_stop_words()
-existing_words = {entry["word"] for entry in stop_words}  # 重複チェック用セット
+existing_words = {str(entry["word"]) for entry in stop_words}
 
 
 if "input_key_version" not in st.session_state:
@@ -83,8 +95,8 @@ if st.button("追加する") and new_word:
 # ストップワード表示
 stop_words_sorted = sorted(stop_words, key=lambda x: x["word"])
 for entry in stop_words_sorted:
-    word = entry["word"]
-    word_id = entry["id"]
+    word = str(entry["word"])
+    word_id = int(entry["id"])
 
     col1, col2 = st.columns([8, 1])
     with col1:

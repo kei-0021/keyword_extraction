@@ -1,7 +1,9 @@
 """キーワード抽出処理のメインモジュール."""
 
+import argparse
 import json
 import os
+import sys
 import tempfile
 from collections import Counter
 from datetime import datetime
@@ -50,10 +52,9 @@ class UserLike(Protocol):
 # --- 定数 ---
 
 TOP_N = 5
-DAY_LIMIT = 30
 
 
-def run_keyword_extraction() -> Counter[str]:
+def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
     """
     以下の手順でキーワード抽出を行う.
     1. 環境に応じた設定（Notion/Supabase/辞書）の読み込み
@@ -75,13 +76,12 @@ def run_keyword_extraction() -> Counter[str]:
         # --- 本番環境 (Render.com) ---
         notion_token = os.getenv("NOTION_TOKEN")
         database_id = os.getenv("DATABASE_ID")
-
         supabase = get_supabase_client()
 
         # ユーザーID取得 (st.session_state から型安全に取得)
         session_user = st.session_state.get("user")
         if session_user and hasattr(session_user, "id"):
-            user_id = str(cast(UserLike, session_user).id)
+            user_id = str(session_user.id)
         else:
             user_id = os.getenv("USER_ID") or ""
 
@@ -95,7 +95,6 @@ def run_keyword_extraction() -> Counter[str]:
         )
         stop_words_set = {str(item["word"]) for item in sw_list}
 
-        # ユーザー辞書取得
         response_ud = (
             supabase.table("user_dict")
             .select("word, part_of_speech, reading, pronunciation")
@@ -120,7 +119,6 @@ def run_keyword_extraction() -> Counter[str]:
             custom_dict_path = build_user_dic_from_csv_data(
                 csv_data, dic_dir="/usr/share/mecab/dic/ipadic"
             )
-
     else:
         # --- 開発環境 (Local) ---
         load_dotenv(dotenv_path="config/.env")
@@ -135,24 +133,30 @@ def run_keyword_extraction() -> Counter[str]:
 
         custom_dict_path = "custom_dict/user.dic"
         if not os.path.exists(custom_dict_path):
-            print("ユーザー辞書をビルドします...")
             build_user_dic_from_local_file(
                 entry_csv_path="custom_dict/user_entry.csv",
                 dic_dir="/usr/share/mecab/dic/ipadic",
                 output_dir="custom_dict",
             )
 
-    # バリデーション
     if not notion_token or not database_id:
         raise ValueError("Notion接続用の環境変数が不足しています。")
 
     # --- メインロジック: 解析 ---
-    all_text: str = fetch_good_things(notion_token, database_id, DAY_LIMIT)
-    word_count = analyse_word(all_text, custom_dict_path, stop_words_set)
+    all_text = fetch_good_things(notion_token, database_id, target_month)
+    if not all_text.strip():
+        print(f"対象データが空です (月: {target_month})")
+        return Counter()
 
-    # --- 統計データの保存 ---
+    word_count = analyse_word(all_text, custom_dict_path, stop_words_set)
+    if not word_count:
+        print(f"有効なキーワードがありません (月: {target_month})")
+        return Counter()
+
+    # 月ラベルの決定
+    display_month = target_month or datetime.now().strftime("%Y-%m")
+
     if is_render:
-        # 本番: Supabaseに保存
         try:
             current_supabase = get_supabase_client()
             save_monthly_top_keywords(
@@ -162,46 +166,41 @@ def run_keyword_extraction() -> Counter[str]:
                 top_n=TOP_N,
             )
         except Exception as e:
-            print(f"統計保存スキップ: {e}")
+            print(f"統計保存失敗: {e}")
     else:
-        # 開発: ローカルJSONに出力
+        # 開発用出力 (JSON)
         os.makedirs("output", exist_ok=True)
-
-        # ターゲットマンスを "YYYY-MM" 形式で取得 (例: "2025-12")
-        target_month = datetime.now().strftime("%Y-%m")
-
         debug_data = [
-            {
-                "user_id": user_id,
-                "target_month": target_month,
-                "word": word,
-                "count": count,
-            }
-            for word, count in word_count.most_common(TOP_N)
+            {"user_id": user_id, "target_month": display_month, "word": w, "count": c}
+            for w, c in word_count.most_common(TOP_N)
         ]
-
-        # ファイル名も年月を含める (例: "output/monthly_keywords_2025-12.json")
-        debug_file_name = f"monthly_keywords_{target_month}.json"
-        debug_file_path = os.path.join("output", debug_file_name)
-
-        with open(debug_file_path, "w", encoding="utf-8") as f:
+        json_file = os.path.join("output", f"monthly_keywords_{display_month}.json")
+        with open(json_file, "w", encoding="utf-8") as f:
             json.dump(debug_data, f, indent=4, ensure_ascii=False)
-
-        print(f"開発環境: 統計データを {debug_file_path} に出力しました", flush=True)
+        print(f"統計データを出力しました: {json_file}")
 
     # --- 後処理 ---
     print(f"解析結果 TOP {TOP_N}: {word_count.most_common(TOP_N)}")
 
     if not is_render:
-        # 開発環境のみグラフを画像出力
-        fig = generate_bar_chart(word_count)
+        # グラフ画像も月を含めた名前に変更
+        fig = generate_bar_chart(word_count, target_month)
         kaleido.get_chrome_sync()
         os.makedirs("output", exist_ok=True)
-        fig.write_image("output/keyword_chart.png")
-        print("グラフ画像を output/ に出力しました")
+        image_file = os.path.join("output", f"keyword_chart_{display_month}.png")
+        fig.write_image(image_file)
+        print(f"グラフ画像を出力しました: {image_file}")
 
     return word_count
 
 
 if __name__ == "__main__":
-    run_keyword_extraction()
+    parser = argparse.ArgumentParser(description="Notion解析スクリプト")
+    parser.add_argument("month", nargs="?", help="対象月 (YYYY-MM)")
+    args = parser.parse_args()
+
+    try:
+        run_keyword_extraction(target_month=args.month)
+    except Exception as e:
+        print(f"エラー: {e}", file=sys.stderr)
+        sys.exit(1)

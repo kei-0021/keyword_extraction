@@ -19,7 +19,7 @@ supabase = get_supabase_client()
 # ログイン中のユーザー情報
 user = st.session_state.user
 
-st.title("ストップワード管理")
+st.title("過去の解析記録")
 
 
 # データ取得: 内部で型を確定させてから返す

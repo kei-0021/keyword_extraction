@@ -5,7 +5,7 @@ from typing import Protocol, TypedDict, cast
 
 import streamlit as st
 
-from src.services import get_supabase_client
+from src.services.supabase_client import get_supabase_client
 
 MAX_SESSION_DURATION = 15 * 60  # 秒単位
 

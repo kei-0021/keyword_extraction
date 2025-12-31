@@ -28,7 +28,6 @@ PYTHONPATH=. python3 src/core/keyword_extraction.py (YYYY-MM)
 
 ## 2. ローカルサーバーを立てて確認
 - `Local URL: http://localhost:8501`を選択してください (2025.7 現在非公開)
-- UI上で除外後やユーザー辞書を登録することはできますが、参照するのはローカルの `custom_dict`フォルダであることに注意してください
 ```
 PYTHONPATH=. python3 -m streamlit run src/app.py
 ```

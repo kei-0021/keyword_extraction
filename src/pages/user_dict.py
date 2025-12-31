@@ -3,8 +3,7 @@ from typing import TypedDict, cast
 
 import streamlit as st
 
-from src.services.supabase_auth import require_login
-from src.services.supabase_client import get_supabase_client
+from src.services.supabase_auth import get_supabase_client, require_login
 
 
 class UserDictEntry(TypedDict):

@@ -1,3 +1,5 @@
+"""過去の解析結果を表示するページモジュール."""
+
 from typing import TypedDict, cast
 
 import streamlit as st
@@ -5,103 +7,92 @@ import streamlit as st
 from src.services import get_supabase_client, require_login
 
 
-class StopWordEntry(TypedDict):
-    id: int  # または UUID なら str
+# 記録データの型定義
+class MonthlyKeywordEntry(TypedDict):
+    id: int
+    target_month: str
     word: str
+    count: int
 
 
-# ログインを必須にする
+# ログイン必須
 require_login()
-
-# Supabase クライアントの初期化
 supabase = get_supabase_client()
+user_id = st.session_state.user.id
 
-# ログイン中のユーザー情報
-user = st.session_state.user
-
-st.title("過去の解析記録")
-
-
-# データ取得: 内部で型を確定させてから返す
-@st.cache_data(ttl=60)
-def fetch_stop_words() -> list[StopWordEntry]:
-    user_id = st.session_state.user.id
-    response = (
-        supabase.table("stop_words").select("id, word").eq("user_id", user_id).execute()
-    )
-
-    res_data = response.data
-    if isinstance(res_data, list):
-        # 外部の JSON 型を StopWordEntry 型に変換して返す
-        return cast(list[StopWordEntry], res_data)
-    return []
-
-
-# 追加
-def add_stop_word(word: str) -> None:
-    user_id = st.session_state.user.id
-    supabase.table("stop_words").insert({"user_id": user_id, "word": word}).execute()
-
-
-# 削除
-def delete_stop_word(word_id: int) -> None:
-    print("現在のユーザーID:", st.session_state.user.id)
-    print(f"削除リクエスト: id={word_id} / type={type(word_id)}")
-
-    response = (
-        supabase.table("stop_words")
-        .delete()
-        .eq("id", word_id)
-        .eq("user_id", st.session_state.user.id)
-        .execute()
-    )
-
-    print("削除レスポンス:", response)
-    print("削除レスポンス data:", response.data)
-
-
-# 現在のストップワード一覧を取得
-stop_words = fetch_stop_words()
-existing_words = {str(entry["word"]) for entry in stop_words}
-
-
-if "input_key_version" not in st.session_state:
-    st.session_state.input_key_version = 0
-
-input_key = f"new_word_input_{st.session_state.input_key_version}"
-
-new_word = st.text_input(
-    "ストップワードを追加",
-    key=input_key,
-    placeholder="ストップワードを入力してください",
-)
-
-
-if st.button("追加する") and new_word:
-    cleaned_word = new_word.strip()
-    if cleaned_word in existing_words:
-        st.warning(f"「{cleaned_word}」は既に追加されています")
-    else:
-        add_stop_word(cleaned_word)
-        st.success(f"「{cleaned_word}」を追加しました")
-        # キーを変えてウィジェットを新規生成 → 入力欄リセット効果
-        st.session_state.input_key_version += 1
+# --- ヘッダーエリア ---
+col_title, col_btn = st.columns([4, 1])
+with col_title:
+    st.title("過去の解析記録")
+with col_btn:
+    st.write("")
+    if st.button("🔄 更新", use_container_width=True):
         st.cache_data.clear()
-        st.session_state["new_word_input"] = ""
         st.rerun()
 
 
-# ストップワード表示
-stop_words_sorted = sorted(stop_words, key=lambda x: x["word"])
-for entry in stop_words_sorted:
-    word = str(entry["word"])
-    word_id = int(entry["id"])
+# --- データ取得ロジック ---
+@st.cache_data(ttl=60)
+def fetch_monthly_history(u_id: str) -> list[MonthlyKeywordEntry]:
+    """Supabaseから全履歴を取得."""
+    try:
+        response = (
+            supabase.table("monthly_keywords")
+            .select("id, target_month, word, count")
+            .eq("user_id", u_id)
+            .order("target_month", desc=True)
+            .order("count", desc=True)
+            .execute()
+        )
+        return cast(list[MonthlyKeywordEntry], response.data or [])
+    except Exception as e:
+        st.error(f"データ取得に失敗しました: {e}")
+        return []
 
-    col1, col2 = st.columns([8, 1])
-    with col1:
-        st.write(word)
-    with col2:
-        if st.button("削除", key=f"del_{word_id}"):
-            delete_stop_word(word_id)
-            st.cache_data.clear()
-            st.rerun()
+
+history_data = fetch_monthly_history(user_id)
+
+if not history_data:
+    st.info("過去の解析記録はまだありません。メイン画面から解析を実行してください。")
+    st.stop()
+
+# --- 年の抽出と選択 ---
+# target_month ("YYYY-MM-DD" または "YYYY-MM") から年だけを抽出
+all_years = sorted(
+    list({item["target_month"][:4] for item in history_data}), reverse=True
+)
+selected_year = st.selectbox("表示する年を選択", options=all_years)
+
+# 選択された年のデータのみに絞り込み
+yearly_data = [
+    item for item in history_data if item["target_month"].startswith(selected_year)
+]
+# その年の中に存在する月を特定
+months_in_year = sorted(
+    list({item["target_month"] for item in yearly_data}), reverse=True
+)
+
+st.subheader(f"📅 {selected_year} 年の記録")
+st.write(f"この年は {len(months_in_year)} ヶ月分のデータがあります。")
+st.divider()
+
+# --- メインコンテンツ：選択された年の月をループ ---
+for month in months_in_year:
+    month_data = [item for item in yearly_data if item["target_month"] == month]
+
+    # 月ごとの表示
+    with st.container():
+        # 月の表示を少しオシャレに (例: 2025-01 -> 1月)
+        month_label = month.split("-")[1].lstrip("0") + "月"
+        st.markdown(f"### 📍 {month_label}")
+
+        display_list = [
+            {"キーワード": item["word"], "出現回数": item["count"]}
+            for item in month_data
+        ]
+
+        st.table(display_list)
+        st.write("")
+
+st.divider()
+st.caption("※同じ月の解析を再度実行すると、記録は自動的に最新の情報に更新されます。")

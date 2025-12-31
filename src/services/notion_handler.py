@@ -1,7 +1,7 @@
 """Notionから「良かったこと」を取得するモジュール."""
 
 import calendar
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, cast
 
 from notion_client import Client
 
@@ -55,84 +55,78 @@ class NotionDateFilter(TypedDict):
 NotionAndFilter = TypedDict("NotionAndFilter", {"and": list[NotionDateFilter]})
 
 
+# --- メイン関数 ---
 def fetch_good_things(
     token: str, database_id: str, target_month: str | None = None
 ) -> str:
-    """Notionから対象月(YYYY-MM)または最新の「良かったこと」を抽出。
-
-    Args:
-        token: Notion APIトークン
-        database_id: データベースID
-        target_month: 指定月(YYYY-MM)。未指定時は最新30件。
-
-    Returns:
-        スペース区切りで結合されたテキスト
+    """
+    Notionから対象月(YYYY-MM)のデータを厳密に抽出。
+    JSTタイムゾーンを明示することで、境界線上の5/1混入を完全に防ぐ。
     """
     client = Client(auth=token)
-
-    sorts_list: list[NotionSort] = [{"property": "日付", "direction": "descending"}]
-    filter_obj: NotionAndFilter | None = None
-    page_size: int = 30
+    sorts_list = [{"property": "日付", "direction": "descending"}]
+    filter_obj = None
+    page_size = 30
 
     if target_month:
         try:
             year_str, month_str = target_month.split("-")
             year, month = int(year_str), int(month_str)
+
+            # 月の最終日を計算
             last_day = calendar.monthrange(year, month)[1]
 
-            start_date = f"{year}-{month:02d}-01"
-            end_date = f"{year}-{month:02d}-{last_day}"
-
-            # Notion APIのdateフィルタは一つのオブジェクトにまとめるのが確実
-            # また、内部の None をこの時点でパージしておく
-            date_cond = {
-                k: v
-                for k, v in {
-                    "on_or_after": start_date,
-                    "on_or_before": end_date,
-                }.items()
-                if v is not None
-            }
+            # 開始日と終了日を ISO8601 形式（日本時間 +09:00）で指定
+            # これにより、Notion内部のUTC変換による1日のズレを阻止する
+            start_iso = f"{year}-{month:02d}-01T00:00:00+09:00"
+            end_iso = f"{year}-{month:02d}-{last_day}T23:59:59+09:00"
 
             filter_obj = {
                 "and": [
-                    {
-                        "property": "日付",
-                        "date": date_cond,  # type: ignore
-                    }
+                    {"property": "日付", "date": {"on_or_after": start_iso}},
+                    {"property": "日付", "date": {"on_or_before": end_iso}},
                 ]
             }
             page_size = 100
         except ValueError as e:
             raise ValueError(f"target_month形式不正(YYYY-MM): {target_month}") from e
 
-    # クエリパラメータを構築（Noneを除外）
+    # クエリパラメータ構築
     query_params = {
         "database_id": database_id,
         "sorts": sorts_list,
-        "filter": filter_obj,
         "page_size": page_size,
     }
-    valid_params = {k: v for k, v in query_params.items() if v is not None}
+    if filter_obj:
+        query_params["filter"] = filter_obj
 
     # クエリ実行
-    response_data = client.databases.query(**valid_params)
-    response: NotionQueryResponse = response_data  # type: ignore
+    response_data = client.databases.query(**query_params)
+
+    # 型キャスト (Anyを使わず Pylance を黙らせる)
+    response = cast(NotionQueryResponse, response_data)
 
     all_good_things: list[str] = []
-
     for result in response["results"]:
         props = result["properties"]
-        combined_row_texts: list[str] = [
-            _extract_text(props[key]["rich_text"])
-            for key in ["良かったこと１", "良かったこと２", "良かったこと３"]
-            if key in props
-        ]
+
+        # 抽出対象のキー
+        target_keys = ["良かったこと１", "良かったこと２", "良かったこと３"]
+        combined_row_texts: list[str] = []
+
+        for key in target_keys:
+            if key in props:
+                # _extract_text に渡す前に型安全なリストを渡す
+                text_list = props[key].get("rich_text", [])
+                combined_row_texts.append(_extract_text(text_list))
+
         all_good_things.append(" ".join(combined_row_texts))
 
     return " ".join(all_good_things)
 
 
-def _extract_text(rich_text_array: list[NotionRichText]) -> str:
-    """rich_textプロパティからプレーンテキストを抽出する."""
-    return "".join([rt["text"]["content"] for rt in rich_text_array])
+def _extract_text(rich_text_array: list) -> str:
+    """rich_textプロパティからプレーンテキストを抽出する補助関数."""
+    if not rich_text_array:
+        return ""
+    return "".join([rt.get("plain_text", "") for rt in rich_text_array])

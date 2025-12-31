@@ -69,7 +69,7 @@ if "word_count" in st.session_state:
 
     # グラフ生成
     fig = generate_bar_chart(word_count, target_month=display_month)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="content")
 
     # ダウンロードエリア
     col1, col2 = st.columns([1, 3])

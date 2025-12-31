@@ -63,7 +63,8 @@ def save_monthly_top_keywords(
 
         inserted_count = len(response.data)
         print(
-            f"Successfully refreshed {inserted_count} keywords to Supabase (Delete & Insert)."
+            f"Successfully refreshed {inserted_count} keywords to Supabase "
+            "(Delete & Insert)."
         )
 
     except APIError as e:

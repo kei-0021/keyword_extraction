@@ -1,5 +1,6 @@
 """キーワード抽出処理のメインモジュール."""
 
+import logging
 import os
 import tempfile
 from collections import Counter
@@ -16,16 +17,15 @@ from src.core.csv_to_dic import (
 )
 from src.core.plot import generate_bar_chart
 from src.core.word_analyser import analyse_word
-from src.logs.logger import MyLogger
+from src.logs.logger import KELogger
 from src.services import (
     fetch_good_things,
     get_supabase_client,
     save_monthly_top_keywords,
 )
 
+
 # --- 型定義 ---
-
-
 class StopWordRow(TypedDict):
     """ストップワードテーブルのレコード構造."""
 
@@ -48,14 +48,16 @@ class UserLike(Protocol):
 
 
 # --- 定数 ---
-
 TOP_N = 5
 
 
 @st.cache_resource
-def get_tagger(custom_dict_path: str, _logger: MyLogger) -> MeCab.Tagger:
+def get_tagger(custom_dict_path: str) -> MeCab.Tagger:
     """MeCab Tagger をキャッシュして取得する"""
-    _logger.debug("MeCab.Tagger を新規生成します")
+    # 渡された log ではなく、名前を指定して取得する
+    logger = logging.getLogger("keyword_logger")
+    logger.debug("MeCab.Tagger を新規生成します")
+
     return MeCab.Tagger(
         f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
     )
@@ -71,22 +73,21 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
     5. 統計データの保存（Supabase / ローカル）
     6. 画像出力（ローカル環境のみ）
     """
-
-    log = MyLogger()
-    print(f"{'-' * 40} run_keyword_extraction {'-' * 40}")
+    KELogger.setup(level=logging.INFO)
+    log = logging.getLogger("keyword_logger")
 
     # --- 1. 実行月の確定 ---
     if target_month is None:
         target_month = datetime.now().strftime("%Y-%m")
 
+    # メインフローの開始は INFO
+    log.info(f"{'=' * 15} Keyword Extraction Start: {target_month} {'=' * 15}")
+
     # --- 2. 実行モードの判定 ---
     is_streamlit_mode = False
     try:
         is_streamlit_mode = st.session_state.get("user") is not None
-    except RuntimeError:
-        is_streamlit_mode = False
-    except Exception as e:
-        print(f"Unexpected error: {e}")
+    except Exception:
         is_streamlit_mode = False
 
     is_render = os.getenv("RENDER") == "true"
@@ -128,7 +129,7 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
         stop_words_set = {str(item["word"]) for item in sw_list}
 
         # ユーザー辞書取得
-        print("build_user_dic_from_db: start")
+        log.debug("DBからユーザー辞書を取得します")
         response_ud = (
             supabase.table("user_dict")
             .select("word,part_of_speech,reading,pronunciation")
@@ -136,7 +137,7 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
             .execute()
         )
         entries = cast(list[UserDictRow], response_ud.data or [])
-        print(f"DBからユーザー辞書取得件数: {len(entries)}")
+        log.debug(f"辞書取得件数: {len(entries)}")
 
         if not entries:
             print("ユーザー辞書が空なので空ファイルを作成")
@@ -181,19 +182,26 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
         raise ValueError("Notion接続用の環境変数が不足しています。")
 
     # --- 4. Notionからテキスト取得 ---
-    print(f"{target_month=}")
+    KELogger.start("Notionデータ取得")
     all_text = fetch_good_things(notion_token, database_id, target_month)
-    print(f"{all_text=}")
+    KELogger.end("Notionデータ取得")
+
+    # 取得内容のチラ見せは DEBUG
+    preview = all_text[:50].replace("\n", " ")
+    log.debug(f"取得テキスト(冒頭50文字): {preview}...")
 
     if not all_text.strip():
-        print(f"対象データが空です (月: {target_month})")
+        log.warning(f"対象データが空です (月: {target_month})")
         return Counter()
 
     # --- 5. 解析実行 ---
-    log.debug("get_tagger を呼び出します")
-    tagger = get_tagger(custom_dict_path, log)
+    tagger = get_tagger(custom_dict_path)
+    KELogger.start("形態素解析")
     word_count = analyse_word(all_text, tagger, stop_words_set)
-    log.debug(word_count.most_common(TOP_N))
+    KELogger.end("形態素解析")
+
+    # 最終的なトップキーワードは INFO
+    log.info(f"Top {TOP_N} Keywords: {word_count.most_common(TOP_N)}")
 
     # --- 6. 統計保存 ---
     if use_supabase:
@@ -205,24 +213,26 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
                 word_count=word_count,
                 top_n=TOP_N,
             )
+            log.info("Supabaseへの統計保存が完了しました")
         except Exception as e:
+            log.error(f"Supabase保存失敗: {e}")
             if is_streamlit_mode:
-                st.error(f"Supabaseへの保存に失敗しました: {e}")
-            else:
-                print(f"Supabaseへの保存に失敗しました: {e}")
+                st.error(f"保存失敗: {e}")
     else:
         from src.services import save_monthly_top_keywords_local
 
         save_monthly_top_keywords_local(user_id, target_month, word_count, TOP_N)
+        log.info("ローカルへの統計保存が完了しました")
 
     # --- 7. 画像出力 ---
     if not is_render:
-        log.start("グラフ出力")
+        KELogger.start("グラフ画像出力")
         fig = generate_bar_chart(word_count, target_month)
         os.makedirs("output", exist_ok=True)
         fig.write_image(f"output/keyword_chart_{target_month}.png")
-        log.end("グラフ出力")
+        KELogger.end("グラフ画像出力")
 
+    log.info(f"{'=' * 15} Keyword Extraction Finished {'=' * 15}")
     return word_count
 
 

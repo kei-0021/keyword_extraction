@@ -7,10 +7,9 @@ on:
       - main
 
 jobs:
-  lint:
-    name: Run linters
+  quality-check:
+    name: Run Quality Checks
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -18,18 +17,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r .devcontainer/requirements.txt
-          pip install flake8
+      - name: Install Hatch
+        run: pip install hatch
 
-      - name: Run Ruff (Python linter)
-        run: ruff check .
+      # 1. 型チェック (Pyright)
+      - name: Run Pyright
+        run: hatch run check
 
-      - name: Run shellcheck (Shell linter)
+      # 2. 静的解析 & フォーマットチェック (Ruff)
+      # hatch fmt --check は修正を行わず、ルール違反がある場合にエラーを返します
+      - name: Run Ruff via Hatch
+        run: hatch fmt --check
+
+      # 3. シェルスクリプトのチェック (もし必要なら)
+      - name: Run shellcheck
         run: |
           sudo apt-get update && sudo apt-get install -y shellcheck
           find . -type f -name "*.sh" -exec shellcheck {} +

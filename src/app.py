@@ -1,17 +1,22 @@
+"""キーワード抽出ツールのStreamlitエントリーポイント."""
+
+import datetime
+import io
+from collections import Counter
+from typing import cast
+
 import pytz
 import streamlit as st
 
-from src.core.keyword_extraction import run_keyword_extraction
-from src.core.plot import generate_bar_chart
-from src.services.supabase_auth import require_login, show_login
+from src.core import generate_bar_chart, run_keyword_extraction
+from src.services import require_login, show_login
 from src.services.supabase_client import get_supabase_client
 
 
 def save_analysis_to_supabase(word_count, supabase, user_id, top_n=5):
-    # 既存データ削除（ユーザーの解析結果を全部消す）
+    """解析結果をSupabaseに保存する（既存データは削除）."""
     supabase.table("analysis_result").delete().eq("user_id", user_id).execute()
 
-    # 上位top_nだけ保存（updated_atはSupabase側で自動設定）
     data = [
         {
             "user_id": user_id,
@@ -25,7 +30,7 @@ def save_analysis_to_supabase(word_count, supabase, user_id, top_n=5):
 
 
 def load_last_analysis(supabase, user_id):
-    # 最新の解析結果を取得（updated_at付き）
+    """最新の解析結果をSupabaseから取得する."""
     response = (
         supabase.table("analysis_result")
         .select("word, count, updated_at")
@@ -35,40 +40,47 @@ def load_last_analysis(supabase, user_id):
         .execute()
     )
     if response.data:
-        from collections import Counter
-
-        # updated_atは全行同じと仮定し、先頭のレコードから取得
         last_updated = response.data[0].get("updated_at", None)
-
         word_counts = Counter({item["word"]: item["count"] for item in response.data})
         return word_counts, last_updated
     return None, None
 
 
 def format_jst_datetime(dt_str):
-    # ISO8601のUTC文字列を受けてJSTの日本語フォーマットに変換
-
+    """ISO8601文字列をJSTの日本語フォーマットに変換する."""
     import dateutil.parser
 
     dt = dateutil.parser.isoparse(dt_str)
-    # JSTタイムゾーンに変換
     jst = dt.astimezone(pytz.timezone("Asia/Tokyo"))
     return jst.strftime("%Y年%-m月%-d日 %H:%M")
 
 
-# --- アプリ起動時のルート処理 ---
+def get_month_options() -> list[str]:
+    """2024年10月から現在までの年月リスト(YYYY-MM)を降順で生成."""
+    start_date = datetime.date(2024, 10, 1)
+    current = datetime.date.today()
+
+    options: list[str] = []
+    while current >= start_date:
+        options.append(current.strftime("%Y-%m"))
+        current = current.replace(day=1) - datetime.timedelta(days=1)
+    return options
+
+
+# --- 1. ログインガード ---
 if "user" not in st.session_state:
     show_login()
     st.stop()
 
 require_login()
 
+# --- 2. メインUI ---
 st.title("Keyword Extraction")
 
 supabase = get_supabase_client()
 user_id = st.session_state.user.id
 
-# まず前回の解析結果を読み込む
+# 前回の解析結果をセッションに読み込む
 if "word_count" not in st.session_state:
     last_word_count, last_updated = load_last_analysis(supabase, user_id)
     if last_word_count:
@@ -77,38 +89,59 @@ if "word_count" not in st.session_state:
     else:
         st.session_state["last_updated"] = None
 
-# 解析ボタンの状態
+# 解析設定
+st.subheader("解析設定")
+month_options = get_month_options()
+selected_month = st.selectbox("解析対象月を選択してください", options=month_options)
+
 is_running = st.session_state.get("running", False)
 
-if st.button("解析開始", disabled=is_running):
+if st.button(f"{selected_month} の解析開始", disabled=is_running):
     try:
         st.session_state.running = True
-        with st.spinner("解析を実行中...お待ちください"):
-            word_count = run_keyword_extraction()
+        with st.spinner(f"{selected_month} のデータを取得・解析中..."):
+            word_count = run_keyword_extraction(target_month=selected_month)
             st.session_state["word_count"] = word_count
+            st.session_state["last_selected_month"] = selected_month
 
-            # Supabaseに保存（updated_atは自動）
+            # Supabaseに保存
             save_analysis_to_supabase(word_count, supabase, user_id, top_n=5)
 
-            # 保存後は改めて最新日時を取得し直すのがおすすめ
+            # 最新日時を取得し直し
             _, last_updated = load_last_analysis(supabase, user_id)
             st.session_state["last_updated"] = last_updated
 
-        st.success("解析完了！")
-
+        st.success(f"{selected_month} の解析が完了しました！")
     except Exception as e:
-        st.error(f"エラーが発生しました: {e}")
-
+        st.error(f"解析中にエラーが発生しました: {e}")
     finally:
         st.session_state.running = False
 
-# 解析結果の表示（グラフ）
+st.divider()
+
+# --- 3. 解析結果の表示 ---
 if "word_count" in st.session_state:
-    fig = generate_bar_chart(st.session_state["word_count"])
+    word_count = cast(Counter[str], st.session_state["word_count"])
+    display_month = st.session_state.get("last_selected_month", selected_month)
+
+    st.subheader(f"解析結果: {display_month}")
+
+    # グラフ生成
+    fig = generate_bar_chart(word_count, target_month=display_month)
     st.plotly_chart(fig, use_container_width=True)
 
+    # ダウンロードと最終更新日時
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        img_bytes = fig.to_image(format="png")
+        st.download_button(
+            label="PNGをダウンロード",
+            data=io.BytesIO(img_bytes),
+            file_name=f"keyword_chart_{display_month}.png",
+            mime="image/png",
+        )
 
-# 最終解析日時の表示
-if "last_updated" in st.session_state and st.session_state["last_updated"]:
-    formatted_date = format_jst_datetime(st.session_state["last_updated"])
-    st.write(f"最終解析日時: {formatted_date}")
+    with col2:
+        if st.session_state.get("last_updated"):
+            formatted_date = format_jst_datetime(st.session_state["last_updated"])
+            st.write(f"最終解析日時: {formatted_date}")

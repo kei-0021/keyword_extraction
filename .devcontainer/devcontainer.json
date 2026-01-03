@@ -7,12 +7,16 @@
     "vscode": {
       "extensions": [
         "ms-python.python",
-        "ms-vscode-remote.remote-containers",
+        "ms-python.vscode-pylance",
         "mhutchie.git-graph",
         "charliermarsh.ruff"
-      ]
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
     }
   },
-  "postCreateCommand": "pip install -r .devcontainer/requirements.txt && pip install mecab-python3 && echo 'PROMPT=\"%F{blue}%n@%m%f:%F{green}%~%f$ \"' >> ~/.zshrc && echo 'DEFAULT_USER=vscode' >> ~/.zshrc && echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc",
+  "postCreateCommand": "python3 -m pip install --user hatch && python3 -m hatch env create && echo 'PROMPT=\"%F{blue}%n@%m%f:%F{green}%~%f$ \"' >> ~/.zshrc && echo 'DEFAULT_USER=vscode' >> ~/.zshrc && echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.zshrc",
   "remoteUser": "vscode"
 }

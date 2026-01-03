@@ -1,11 +1,11 @@
-"""キーワード抽出処理のメインモジュール。"""
+"""キーワード抽出処理のメインモジュール."""
 
-import base64
 import os
 import tempfile
 from collections import Counter
+from datetime import datetime
+from typing import Protocol, TypedDict, cast
 
-import kaleido
 import MeCab
 import streamlit as st
 from dotenv import load_dotenv
@@ -17,71 +17,125 @@ from src.core.csv_to_dic import (
 from src.core.plot import generate_bar_chart
 from src.core.word_analyser import analyse_word
 from src.logs.logger import MyLogger
-from src.services.notion_handler import fetch_good_things
-from src.services.supabase_client import get_supabase_client
+from src.services import (
+    fetch_good_things,
+    get_supabase_client,
+    save_monthly_top_keywords,
+)
 
-TOP_N = 5  # 頻出単語の上位から数えて何個を表示するか
-DAY_LIMIT = 30  # 過去何日分のデータを取得するか
+# --- 型定義 ---
+
+
+class StopWordRow(TypedDict):
+    """ストップワードテーブルのレコード構造."""
+
+    word: str
+
+
+class UserDictRow(TypedDict):
+    """ユーザー辞書テーブルのレコード構造."""
+
+    word: str
+    part_of_speech: str
+    reading: str
+    pronunciation: str
+
+
+class UserLike(Protocol):
+    """Supabase Userオブジェクトの最小要件を定義するプロトコル."""
+
+    id: str | int
+
+
+# --- 定数 ---
+
+TOP_N = 5
 
 
 @st.cache_resource
 def get_tagger(custom_dict_path: str, _logger: MyLogger) -> MeCab.Tagger:
+    """MeCab Tagger をキャッシュして取得する"""
     _logger.debug("MeCab.Tagger を新規生成します")
     return MeCab.Tagger(
         f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
     )
 
 
-def run_keyword_extraction() -> Counter:
-    """Notionデータからキーワードを抽出し、名詞頻度のカウント結果を返す。
-
-    - Render環境かどうかで処理を切り替える
-    - Supabase上のストップワードやユーザー辞書を使用
-    - Render環境ではSupabaseからユーザー辞書を取得しMeCab辞書を一時生成
-    - それ以外は開発環境としてローカル辞書を利用し、なければビルドする
+def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
     """
+    以下の手順でキーワード抽出を行う.
+    1. 実行月の確定（Noneなら今月）
+    2. 環境に応じた設定（Notion/Supabase/辞書）の読み込み
+    3. Notionから指定月のテキストデータを取得
+    4. MeCabによる構文解析とキーワードカウント
+    5. 統計データの保存（Supabase / ローカル）
+    6. 画像出力（ローカル環境のみ）
+    """
+
     log = MyLogger()
     print(f"{'-' * 40} run_keyword_extraction {'-' * 40}")
 
-    IS_RENDER = os.getenv("RENDER") == "true"
+    # --- 1. 実行月の確定 ---
+    if target_month is None:
+        target_month = datetime.now().strftime("%Y-%m")
 
-    if IS_RENDER:
-        # Render環境（環境変数から取得し、jsonを一時ファイルに保存）
-        NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-        DATABASE_ID = os.getenv("DATABASE_ID")
+    # --- 2. 実行モードの判定 ---
+    is_streamlit_mode = False
+    try:
+        is_streamlit_mode = st.session_state.get("user") is not None
+    except RuntimeError:
+        is_streamlit_mode = False
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        is_streamlit_mode = False
 
-        b64_creds = os.getenv("GOOGLE_CREDENTIALS_JSON")
-        if not b64_creds:
-            raise ValueError("GOOGLE_CREDENTIALS_JSON が設定されていません")
+    is_render = os.getenv("RENDER") == "true"
+    use_supabase = is_render or is_streamlit_mode
 
-        decoded = base64.b64decode(b64_creds)
-        with tempfile.NamedTemporaryFile(
-            mode="w+b", delete=False, suffix=".json"
-        ) as tmp:
-            tmp.write(decoded)
-            GOOGLE_CREDENTIALS_JSON = tmp.name
+    # 共通変数の初期化
+    notion_token = os.getenv("NOTION_TOKEN")
+    database_id = os.getenv("DATABASE_ID")
+    user_id = ""
+    stop_words_set: set[str] = set()
+    custom_dict_path = ""
+    dotenv_path = ""
 
+    if not is_render:
+        # カレントディレクトリに依存せず、絶対パスで.envを指定
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        dotenv_path = os.path.join(current_file_dir, "../../config/.env")
+        load_dotenv(dotenv_path=dotenv_path)
+
+        # 再取得
+        notion_token = os.getenv("NOTION_TOKEN")
+        database_id = os.getenv("DATABASE_ID")
+
+    # --- 3. 辞書とストップワードの準備 ---
+    if use_supabase:
         supabase = get_supabase_client()
-        try:
-            user_id = st.session_state.user.id
-        except Exception:
-            user_id = os.getenv("USER_ID") or ""
+        session_user = st.session_state.get("user")
+        user_id = (
+            str(session_user.id)
+            if session_user
+            else (os.getenv("USER_ID") or "unknown")
+        )
 
-        # ストップワードはSupabaseから取得
-        response = (
+        # ストップワード取得
+        response_sw = (
             supabase.table("stop_words").select("word").eq("user_id", user_id).execute()
         )
-        stop_words_set = set(item["word"] for item in response.data)
+        sw_list = cast(list[StopWordRow], response_sw.data or [])
+        stop_words_set = {str(item["word"]) for item in sw_list}
 
-        # ユーザー辞書をSupabaseから取得し一時ファイルでMeCab辞書生成
+        # ユーザー辞書取得
         print("build_user_dic_from_db: start")
-        response = (
+        response_ud = (
             supabase.table("user_dict")
-            .select("word, part_of_speech, reading, pronunciation")
+            .select("word,part_of_speech,reading,pronunciation")
             .eq("user_id", user_id)
             .execute()
         )
-        entries = response.data or []
+        entries = cast(list[UserDictRow], response_ud.data or [])
         print(f"DBからユーザー辞書取得件数: {len(entries)}")
 
         if not entries:
@@ -97,57 +151,76 @@ def run_keyword_extraction() -> Counter:
             custom_dict_path = temp_dic.name
         else:
             csv_data = "\n".join(
-                f"{e['word']},{e['part_of_speech']},{e['reading']},{e['pronunciation']}"
-                for e in entries
+                [
+                    f"{e['word']},{e['part_of_speech']},{e['reading']},{e['pronunciation']}"
+                    for e in entries
+                ]
             )
             custom_dict_path = build_user_dic_from_csv_data(
                 csv_data, dic_dir="/usr/share/mecab/dic/ipadic"
             )
-
     else:
-        # それ以外（開発環境）：.env読み込み、ローカル辞書利用
-        load_dotenv(dotenv_path="config/.env")
-        NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-        DATABASE_ID = os.getenv("DATABASE_ID")
-        GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_PATH")
+        user_id = os.getenv("USER_ID") or "dev_user"
+        sw_path = "custom_dict/stop_words.txt"
+        if os.path.exists(sw_path):
+            with open(sw_path, encoding="utf-8") as f:
+                stop_words_set = {line.strip() for line in f if line.strip()}
 
-        # ストップワードはローカルファイルから読み込み
-        with open("custom_dict/stop_words.txt", encoding="utf-8") as f:
-            stop_words_set = set(line.strip() for line in f if line.strip())
-
-        # ローカル辞書がなければビルド
         custom_dict_path = "custom_dict/user.dic"
         if not os.path.exists(custom_dict_path):
-            print("ユーザー辞書が見つかりません。ビルドを実行します。")
             build_user_dic_from_local_file(
-                entry_csv_path="custom_dict/user_entry.csv",
-                dic_dir="/usr/share/mecab/dic/ipadic",
-                output_dir="custom_dict",
+                "custom_dict/user_entry.csv",
+                "/usr/share/mecab/dic/ipadic",
+                "custom_dict",
             )
 
-    # 必須の環境変数が揃っているか確認
-    if not all([NOTION_TOKEN, DATABASE_ID, GOOGLE_CREDENTIALS_JSON]):
-        raise ValueError("環境変数が不足しています。.envファイルを確認してください。")
+    if not notion_token or not database_id:
+        # Ruff E501 回避のための切り出し
+        p_info = os.path.abspath(dotenv_path) if dotenv_path else "None"
+        print(f"DEBUG: dotenv_path used: {p_info}")
+        raise ValueError("Notion接続用の環境変数が不足しています。")
 
-    # Notionからデータ取得
-    log.start("Notionデータ取得")
-    all_text: str = fetch_good_things(NOTION_TOKEN, DATABASE_ID, DAY_LIMIT)
-    log.end("Notionデータ取得")
+    # --- 4. Notionからテキスト取得 ---
+    print(f"{target_month=}")
+    all_text = fetch_good_things(notion_token, database_id, target_month)
+    print(f"{all_text=}")
 
-    # Taggerをキャッシュから取得
+    if not all_text.strip():
+        print(f"対象データが空です (月: {target_month})")
+        return Counter()
+
+    # --- 5. 解析実行 ---
     log.debug("get_tagger を呼び出します")
     tagger = get_tagger(custom_dict_path, log)
-
-    # 形態素解析と頻度カウント
-    word_count: Counter = analyse_word(all_text, tagger, stop_words_set)
+    word_count = analyse_word(all_text, tagger, stop_words_set)
     log.debug(word_count.most_common(TOP_N))
 
-    # 開発時のみグラフを出力
-    if not IS_RENDER:
+    # --- 6. 統計保存 ---
+    if use_supabase:
+        try:
+            save_monthly_top_keywords(
+                supabase_client=get_supabase_client(),
+                user_id=user_id,
+                target_month=target_month,
+                word_count=word_count,
+                top_n=TOP_N,
+            )
+        except Exception as e:
+            if is_streamlit_mode:
+                st.error(f"Supabaseへの保存に失敗しました: {e}")
+            else:
+                print(f"Supabaseへの保存に失敗しました: {e}")
+    else:
+        from src.services import save_monthly_top_keywords_local
+
+        save_monthly_top_keywords_local(user_id, target_month, word_count, TOP_N)
+
+    # --- 7. 画像出力 ---
+    if not is_render:
         log.start("グラフ出力")
-        fig = generate_bar_chart(word_count)
-        kaleido.get_chrome_sync()
-        fig.write_image("output/keyword_chart.png")
+        fig = generate_bar_chart(word_count, target_month)
+        os.makedirs("output", exist_ok=True)
+        fig.write_image(f"output/keyword_chart_{target_month}.png")
         log.end("グラフ出力")
 
     return word_count

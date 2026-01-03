@@ -1,6 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "keyword-extraction"
+version = "0.1.0"
+dependencies = [
+    "streamlit==1.51.0",
+    "python-dotenv",
+    "notion-client==2.2.1",
+    "mecab-python3",
+    "pandas",
+    "plotly",
+    "kaleido",
+    "supabase",
+    "gspread",
+    "oauth2client",
+    "pyright"
+]
+
+[tool.hatch.envs.default]
+python = "3.11"
+path = ".venv"
+
+[tool.hatch.envs.default.scripts]
+app = "streamlit run main.py"
+check = "pyright"
+
+# Pyright（Pylance）の詳細設定
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "basic"
+pythonVersion = "3.11"
+pythonPlatform = "Linux"
+
 [tool.ruff]
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]  # エラー、flake8、isortのみ選択
-ignore = ["E203"]  # W503を削除
+select = ["E", "F", "I"]
+ignore = ["E203"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]  # プロジェクトルートにあるファイルを対象にする設定

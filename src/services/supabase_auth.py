@@ -63,12 +63,13 @@ def restore_session() -> None:
         except Exception as e:
             print(f"Session restoration failed: {e}")
             st.warning("セッションの復元に失敗しました。再ログインしてください。")
-            # 整合性を保つため、中途半端なデータは削除
+            # 整合性を保つため、中途慢端なデータは削除
             st.session_state.pop("token", None)
             st.session_state.pop("user", None)
 
 
 def require_login() -> None:
+    """ログインを必須とし、期限切れをチェックする。"""
     restore_session()
     login_time = st.session_state.get("login_time")
     now = time.time()
@@ -85,6 +86,7 @@ def require_login() -> None:
 
 
 def show_login() -> None:
+    """ログイン画面を表示し、認証処理を行う。"""
     supabase = get_supabase_client()
 
     st.title("ログイン")
@@ -98,12 +100,12 @@ def show_login() -> None:
                 {"email": email, "password": password}
             )
 
-            # result.user が UserLike プロトコルを満たしているかチェック
+            # session と user の両方が存在することを確認
             if result.session and result.user:
-                # 1. ユーザー情報をセッションに保存
+                # 1. ユーザー情報を保存
                 st.session_state.user = result.user
 
-                # 2. トークン情報を辞書形式で保存（restore_sessionで使いやすくするため）
+                # 2. トークン情報を辞書形式で保存
                 token_data: SessionToken = {
                     "access_token": result.session.access_token,
                     "refresh_token": result.session.refresh_token,
@@ -111,16 +113,15 @@ def show_login() -> None:
                 st.session_state.token = token_data
                 st.session_state.login_time = time.time()
 
-                # 3. 最新のSDK仕様に合わせてトークンをセット
-                # 個別に渡すことで「Argument missing」を回避します
+                # 3. 最新のSDK仕様に合わせてトークンを個別にセット
                 supabase.auth.set_session(
                     access_token=result.session.access_token,
                     refresh_token=result.session.refresh_token,
                 )
 
+                # Streamlitの再描画
                 st.rerun()
             else:
-                # session か user のどちらかが欠けている場合
                 st.error("ログインに失敗しました。認証情報をご確認ください。")
 
         except Exception as e:

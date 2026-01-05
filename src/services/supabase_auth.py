@@ -1,5 +1,6 @@
 """Supabaseでのユーザー認証を提供するモジュール."""
 
+import logging
 import time
 from typing import Protocol, TypedDict, cast
 
@@ -8,6 +9,8 @@ import streamlit as st
 from src.services.supabase_client import get_supabase_client
 
 MAX_SESSION_DURATION = 15 * 60  # 秒単位
+
+_logger = logging.getLogger("keyword_logger")
 
 
 # 1. ユーザーオブジェクトが持つべき構造を定義（属性アクセス用）
@@ -61,7 +64,7 @@ def restore_session() -> None:
                 st.stop()
 
         except Exception as e:
-            print(f"Session restoration failed: {e}")
+            _logger.error(f"セッション復元エラー: {e}", exc_info=True)
             st.warning("セッションの復元に失敗しました。再ログインしてください。")
             # 整合性を保つため、中途慢端なデータは削除
             st.session_state.pop("token", None)
@@ -125,5 +128,5 @@ def show_login() -> None:
                 st.error("ログインに失敗しました。認証情報をご確認ください。")
 
         except Exception as e:
+            _logger.error(f"ログイン実行エラー (Email: {email}): {e}")
             st.error("IDとパスワードのペアが不正です。もう一度ご確認ください。")
-            print(f"Login error: {e}")

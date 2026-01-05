@@ -73,7 +73,7 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
     5. 統計データの保存（Supabase / ローカル）
     6. 画像出力（ローカル環境のみ）
     """
-    KELogger.setup(level=logging.INFO)
+    KELogger.setup(level=logging.DEBUG)
     log = logging.getLogger("keyword_logger")
 
     # --- 1. 実行月の確定 ---
@@ -140,7 +140,7 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
         log.debug(f"辞書取得件数: {len(entries)}")
 
         if not entries:
-            print("ユーザー辞書が空なので空ファイルを作成")
+            log.info("ユーザー辞書が空なので空ファイルを作成")
             temp_csv = tempfile.NamedTemporaryFile(
                 mode="w", encoding="utf-8", delete=False, suffix=".csv"
             )
@@ -151,6 +151,7 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
             temp_dic.close()
             custom_dict_path = temp_dic.name
         else:
+            log.debug(f"辞書エントリを CSV 形式に変換中... (件数: {len(entries)})")
             csv_data = "\n".join(
                 [
                     f"{e['word']},{e['part_of_speech']},{e['reading']},{e['pronunciation']}"
@@ -161,6 +162,9 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
                 csv_data, dic_dir="/usr/share/mecab/dic/ipadic"
             )
     else:
+        log.info(
+            "ローカルモードで実行中: 辞書とストップワードをファイルから読み込みます"
+        )
         user_id = os.getenv("USER_ID") or "dev_user"
         sw_path = "custom_dict/stop_words.txt"
         if os.path.exists(sw_path):
@@ -174,12 +178,13 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
                 "/usr/share/mecab/dic/ipadic",
                 "custom_dict",
             )
+        else:
+            log.info(f"既存のユーザー辞書を使用します: {custom_dict_path}")
 
     if not notion_token or not database_id:
-        # Ruff E501 回避のための切り出し
-        p_info = os.path.abspath(dotenv_path) if dotenv_path else "None"
-        print(f"DEBUG: dotenv_path used: {p_info}")
-        raise ValueError("Notion接続用の環境変数が不足しています。")
+        error_msg = f"Notion環境変数が不足しています。(dotenv_path: {dotenv_path})"
+        log.error(error_msg)
+        raise ValueError(error_msg)
 
     # --- 4. Notionからテキスト取得 ---
     KELogger.start("Notionデータ取得")
@@ -213,7 +218,6 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
                 word_count=word_count,
                 top_n=TOP_N,
             )
-            log.info("Supabaseへの統計保存が完了しました")
         except Exception as e:
             log.error(f"Supabase保存失敗: {e}")
             if is_streamlit_mode:

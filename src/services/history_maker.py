@@ -1,9 +1,14 @@
 import json
+import logging
 import os
 from typing import Counter, Protocol, runtime_checkable
 
 from postgrest import SyncRequestBuilder
 from postgrest.exceptions import APIError
+
+from src.logs.logger import KELogger
+
+_logger = logging.getLogger("keyword_logger")
 
 
 @runtime_checkable
@@ -48,8 +53,11 @@ def save_monthly_top_keywords(
     ]
 
     if not data_to_insert:
+        _logger.warning(f"保存対象のデータがありませんでした ({target_month})")
         return
 
+    # ここから計測開始
+    KELogger.start("Supabase統計保存")
     try:
         # 2. 既存のデータを削除 (そのユーザーの、その月のデータのみ)
         supabase_client.table("monthly_keywords").delete().eq("user_id", user_id).eq(
@@ -57,18 +65,14 @@ def save_monthly_top_keywords(
         ).execute()
 
         # 3. 新しくデータをインサート
-        response = (
-            supabase_client.table("monthly_keywords").insert(data_to_insert).execute()
-        )
-
-        inserted_count = len(response.data)
-        print(
-            f"Successfully refreshed {inserted_count} keywords to Supabase "
-            "(Delete & Insert)."
-        )
+        supabase_client.table("monthly_keywords").insert(data_to_insert).execute()
 
     except APIError as e:
+        _logger.error(f"Supabaseへの保存に失敗しました: {e.message}")
         raise RuntimeError(f"Supabase persistence failed: {e.message}") from e
+    finally:
+        # 成功しても失敗しても計測終了
+        KELogger.end("Supabase統計保存")
 
 
 def save_monthly_top_keywords_local(

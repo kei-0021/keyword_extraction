@@ -22,17 +22,20 @@ jobs:
       - name: Install Hatch
         run: pip install hatch
 
-      # 1. 型チェック (Pyright)
-      - name: Run Pyright
-        run: hatch run check
+      - name: Install MeCab
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mecab libmecab-dev mecab-ipadic-utf8
+          sudo ln -s /etc/mecabrc /usr/local/etc/mecabrc
 
-      # 2. 静的解析 & フォーマットチェック (Ruff)
-      # hatch fmt --check は修正を行わず、ルール違反がある場合にエラーを返します
+      # 1. 静的解析 & フォーマットチェック (Ruff)
       - name: Run Ruff via Hatch
         run: hatch fmt --check
 
-      # 3. シェルスクリプトのチェック (もし必要なら)
-      - name: Run shellcheck
-        run: |
-          sudo apt-get update && sudo apt-get install -y shellcheck
-          find . -type f -name "*.sh" -exec shellcheck {} +
+      # 2. 型チェック (Pyright)
+      - name: Run Pyright
+        run: hatch run check
+
+      # 3. テストの実行 (pytest)
+      - name: Run Tests via Hatch
+        run: hatch test

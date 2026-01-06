@@ -1,9 +1,15 @@
 """CSVファイルをMeCabの辞書形式に変換するためのモジュール."""
 
 import csv
+import logging
 import os
 import subprocess
 import tempfile
+
+from src.logs.logger import KELogger
+
+# 内部的な詳細ログ用
+_log = logging.getLogger("keyword_logger")
 
 
 def build_user_dic_from_csv_data(csv_data: str, dic_dir: str) -> str:
@@ -59,11 +65,14 @@ def _csv_to_dic(input_csv: str, output_csv: str, has_header: bool = True):
 
 
 def _build_mecab_dict(dic_dir: str, csv_file: str, output_dir: str):
-    """MeCabの辞書をビルドする."""
+    """MeCabの辞書をビルドする（KELogger 準拠版）."""
+
+    KELogger.start("MeCab辞書ビルド")
+
     try:
-        subprocess.run(
+        result = subprocess.run(
             [
-                "/usr/lib/mecab/mecab-dict-index",  # 確実なパスを指定
+                "/usr/lib/mecab/mecab-dict-index",
                 "-d",
                 dic_dir,
                 "-u",
@@ -75,7 +84,17 @@ def _build_mecab_dict(dic_dir: str, csv_file: str, output_dir: str):
                 csv_file,
             ],
             check=True,
+            capture_output=True,
+            text=True,
         )
+        # 成功時はデバッグログ
+        _log.debug("mecab-dict-index output: %s", result.stdout)
+
     except subprocess.CalledProcessError as e:
-        print("辞書のビルド中にエラーが発生しました:")
-        print(e)
+        # エラー時は詳細をしっかり記録
+        _log.error("MeCab辞書のビルドに失敗しました。")
+        _log.error("ExitCode: %d, Stderr: %s", e.returncode, e.stderr)
+        raise
+
+    finally:
+        KELogger.end("MeCab辞書ビルド")

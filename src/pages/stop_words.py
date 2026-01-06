@@ -45,19 +45,9 @@ def add_stop_word(word: str) -> None:
 
 # 削除
 def delete_stop_word(word_id: int) -> None:
-    print("現在のユーザーID:", st.session_state.user.id)
-    print(f"削除リクエスト: id={word_id} / type={type(word_id)}")
-
-    response = (
-        supabase.table("stop_words")
-        .delete()
-        .eq("id", word_id)
-        .eq("user_id", st.session_state.user.id)
-        .execute()
-    )
-
-    print("削除レスポンス:", response)
-    print("削除レスポンス data:", response.data)
+    supabase.table("stop_words").delete().eq("id", word_id).eq(
+        "user_id", st.session_state.user.id
+    ).execute()
 
 
 # 現在のストップワード一覧を取得

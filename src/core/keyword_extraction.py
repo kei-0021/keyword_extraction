@@ -15,7 +15,7 @@ from src.core.csv_to_dic import (
     build_user_dic_from_csv_data,
     build_user_dic_from_local_file,
 )
-from src.core.plot import generate_bar_chart
+from src.core.generate_bar_chart import generate_bar_chart
 from src.core.word_analyser import analyse_word
 from src.logs.logger import KELogger
 from src.services import (

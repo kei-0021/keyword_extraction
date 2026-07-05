@@ -16,16 +16,31 @@ dependencies = [
     "supabase",
     "gspread",
     "oauth2client",
-    "pyright"
+    "pyright",
+    "pytz",
 ]
 
+# default と test 環境を分けるためにプロジェクト内に仮想環境を置く設定は避ける
 [tool.hatch.envs.default]
 python = "3.11"
-path = ".venv"
+# path = ".venv"
 
 [tool.hatch.envs.default.scripts]
 app = "streamlit run main.py"
 check = "pyright"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+# ここで test オプションを明示的にインストールする設定にする
+[tool.hatch.envs.test]
+python = "3.11"
+dependencies = [
+    "pytest",
+]
+features = ["test"]
 
 # Pyright（Pylance）の詳細設定
 [tool.pyright]

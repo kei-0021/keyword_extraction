@@ -2,7 +2,7 @@ import datetime
 from collections import Counter
 from typing import Any
 
-from src.core.plot import generate_bar_chart
+from src.core.generate_bar_chart import generate_bar_chart
 
 
 def test_グラフのタイトルとラベルが正しく設定される():
@@ -36,3 +36,16 @@ def test_データの件数がTOP_Nに制限されている():
     f: Any = fig
     assert len(f["data"][0]["x"]) == top_n
     assert f["data"][0]["x"][0] == "word_9"
+
+
+def test_頻出単語の数が0件の場合でも棒グラフを作成できる():
+    word_count = Counter({})
+    fig = generate_bar_chart(word_count, target_month="2026-01")
+
+    # Anyにキャストして辞書アクセス
+    f: Any = fig
+
+    # 空のタプル（あるいはリスト）であることを確認する
+    assert len(f.data) == 1
+    assert len(f.data[0].x) == 0
+    assert len(f.data[0].y) == 0

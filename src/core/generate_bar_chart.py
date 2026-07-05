@@ -20,7 +20,8 @@ def generate_bar_chart(
         {"単語": word, "出現回数": count}
         for word, count in word_count.most_common(TOP_N)
     ]
-    df = pd.DataFrame(data)
+
+    df = pd.DataFrame(data=data, columns=pd.Index(["単語", "出現回数"]))
 
     # 期間ラベルの構築
     if target_month:

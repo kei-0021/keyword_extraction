@@ -1,8 +1,8 @@
 """キーワード抽出処理のメインモジュール."""
 
+import hashlib
 import logging
 import os
-import tempfile
 from collections import Counter
 from datetime import datetime
 from typing import Protocol, TypedDict, cast
@@ -57,6 +57,10 @@ def get_tagger(custom_dict_path: str) -> MeCab.Tagger:
     # 渡された log ではなく、名前を指定して取得する
     logger = logging.getLogger("keyword_logger")
     logger.debug("MeCab.Tagger を新規生成します")
+
+    # カスタム辞書パスが空または存在しない場合はシステム辞書のみを使用
+    if not custom_dict_path or not os.path.exists(custom_dict_path):
+        return MeCab.Tagger("-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8")
 
     return MeCab.Tagger(
         f"-r /etc/mecabrc -d /var/lib/mecab/dic/ipadic-utf8 -u {custom_dict_path}"
@@ -140,16 +144,8 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
         log.debug(f"辞書取得件数: {len(entries)}")
 
         if not entries:
-            log.info("ユーザー辞書が空なので空ファイルを作成")
-            temp_csv = tempfile.NamedTemporaryFile(
-                mode="w", encoding="utf-8", delete=False, suffix=".csv"
-            )
-            temp_csv.write("")
-            temp_csv.close()
-
-            temp_dic = tempfile.NamedTemporaryFile(delete=False, suffix=".dic")
-            temp_dic.close()
-            custom_dict_path = temp_dic.name
+            log.info("ユーザー辞書が空のため、システム辞書のみを使用します")
+            custom_dict_path = ""
         else:
             log.debug(f"辞書エントリを CSV 形式に変換中... (件数: {len(entries)})")
             csv_data = "\n".join(
@@ -158,26 +154,63 @@ def run_keyword_extraction(target_month: str | None = None) -> Counter[str]:
                     for e in entries
                 ]
             )
-            custom_dict_path = build_user_dic_from_csv_data(
-                csv_data, dic_dir="/usr/share/mecab/dic/ipadic"
-            )
+
+            # データのハッシュ値を計算
+            current_hash = hashlib.sha256(csv_data.encode("utf-8")).hexdigest()
+
+            # 前回のハッシュ・パスと比較し、有効なら再利用
+            last_hash = st.session_state.get("last_dict_hash")
+            last_path = st.session_state.get("last_dict_path")
+
+            if (
+                last_hash == current_hash
+                and last_path is not None
+                and os.path.exists(last_path)
+            ):
+                log.info(
+                    "辞書データに変更がないため、既存のビルド済み辞書を再利用します"
+                )
+                custom_dict_path = last_path
+
+            else:
+                log.info("辞書データが変更されたか、初回実行のためビルドを開始します")
+                custom_dict_path = build_user_dic_from_csv_data(
+                    csv_data, dic_dir="/usr/share/mecab/dic/ipadic"
+                )
+                # 次回のためにキャッシュ
+                st.session_state["last_dict_hash"] = current_hash
+                st.session_state["last_dict_path"] = custom_dict_path
     else:
+        # --- ローカルモード実行時の処理 ---
         log.info(
             "ローカルモードで実行中: 辞書とストップワードをファイルから読み込みます"
         )
         user_id = os.getenv("USER_ID") or "dev_user"
+
+        # ストップワード
         sw_path = "custom_dict/stop_words.txt"
         if os.path.exists(sw_path):
             with open(sw_path, encoding="utf-8") as f:
                 stop_words_set = {line.strip() for line in f if line.strip()}
 
+        # ユーザー辞書
         custom_dict_path = "custom_dict/user.dic"
+        csv_source = "custom_dict/user_entry.csv"
+
+        # .dic がない場合のみビルドする（不要な一からのビルドを回避）
         if not os.path.exists(custom_dict_path):
-            build_user_dic_from_local_file(
-                "custom_dict/user_entry.csv",
-                "/usr/share/mecab/dic/ipadic",
-                "custom_dict",
-            )
+            if os.path.exists(csv_source):
+                log.info(f"既存の .dic がないため、{csv_source} からビルドします")
+                build_user_dic_from_local_file(
+                    csv_source,
+                    "/usr/share/mecab/dic/ipadic",
+                    "custom_dict",
+                )
+            else:
+                log.warning(
+                    "ユーザー辞書ソースが見つからないため、システム辞書のみを使用します"
+                )
+                custom_dict_path = ""
         else:
             log.info(f"既存のユーザー辞書を使用します: {custom_dict_path}")
 
